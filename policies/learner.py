@@ -6,8 +6,7 @@ import math
 import numpy as np
 import torch
 from torch.nn import functional as F
-import gym
-
+import gymnasium as gym
 from .models import AGENT_CLASSES, AGENT_ARCHS
 from torchkit.networks import ImageEncoder
 

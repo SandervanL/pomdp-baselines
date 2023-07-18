@@ -1,8 +1,7 @@
 import json
 import os
 
-import gym
-
+import gymnasium as gym
 
 class MonitorParameters(gym.Wrapper):
     """Environment wrapper which records all environment parameters."""

@@ -1,5 +1,4 @@
-import gym
-
+import gymnasium as gym
 from envs.meta.wrappers import VariBadWrapper
 
 # In VariBAD, they use on-policy PPO by vectorized env.

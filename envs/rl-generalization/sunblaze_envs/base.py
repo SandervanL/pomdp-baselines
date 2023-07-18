@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
-import gym
-
+import gymnasium as gym
 
 class BaseGymEnvironment(gym.Env):
     """Base class for all Gym environments."""
