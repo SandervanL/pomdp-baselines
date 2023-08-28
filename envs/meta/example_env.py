@@ -1,4 +1,8 @@
-import gym
+from typing import Optional, Any, SupportsFloat
+
+import gymnasium as gym
+import numpy as np
+from gymnasium.core import ActType, ObsType
 
 
 class ExampleEnv(gym.Env):
@@ -23,7 +27,7 @@ class ExampleEnv(gym.Env):
         """
         pass
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         Execute one step in the environment.
         Should return: state, reward, done, info
@@ -38,7 +42,8 @@ class ExampleEnv(gym.Env):
         """
         pass
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         """
         Reset the environment. This should *NOT* reset the task!
         Resetting the task is handled in the varibad wrapper (see wrappers.py).

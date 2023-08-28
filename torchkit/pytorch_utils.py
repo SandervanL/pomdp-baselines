@@ -1,4 +1,3 @@
-# -*- coding: future_fstrings -*-
 import torch
 import numpy as np
 import os
@@ -37,6 +36,11 @@ def copy_model_params_from_to(source, target):
 
 
 def fanin_init(tensor):
+    """
+    Initializes the weights according to the fanin init.
+    This init is defined as uniform weights between the positive and negative inverse square root
+    of the input dimension.
+    """
     size = tensor.size()
     if len(size) == 2:
         fan_in = size[0]
@@ -70,13 +74,13 @@ def elem_or_tuple_to_variable(elem_or_tuple):
 
 def filter_batch(np_batch):
     for k, v in np_batch.items():
-        if v.dtype == np.bool:
+        if v.dtype == bool:
             yield k, v.astype(int)
         else:
             yield k, v
 
 
-def np_to_pytorch_batch(np_batch):
+def np_to_pytorch_batch(np_batch: dict[str, np.ndarray]) -> dict[str, torch.Tensor]:
     return {
         k: elem_or_tuple_to_variable(x)
         for k, x in filter_batch(np_batch)

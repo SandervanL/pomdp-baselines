@@ -1,9 +1,11 @@
 import threading
+from typing import Optional, Any, SupportsFloat
 
-import gym
-import gym.envs.atari
-import gym.wrappers
+import gymnasium as gym
+import gymnasium.envs.atari
+import gymnasium.wrappers
 import numpy as np
+from gymnasium.core import ActType, ObsType
 
 
 class Atari(gym.Env):
@@ -15,16 +17,16 @@ class Atari(gym.Env):
     LOCK = threading.Lock()
 
     def __init__(
-        self,
-        name,
-        action_repeat=4,
-        size=(64, 64),
-        grayscale=True,
-        noops=30,
-        life_done=False,
-        sticky_actions=True,
-        all_actions=True,
-        flatten_img=True,
+            self,
+            name,
+            action_repeat=4,
+            size=(64, 64),
+            grayscale=True,
+            noops=30,
+            life_done=False,
+            sticky_actions=True,
+            all_actions=True,
+            flatten_img=True,
     ):
         assert size[0] == size[1]
         channels = 1 if grayscale else 3
@@ -62,14 +64,16 @@ class Atari(gym.Env):
         else:
             self.observation_space = self.image_space
 
-    def reset(self):
-        with self.LOCK:
-            image: np.ndarray = self.env.reset()  # type: ignore
-        return self.observe(image)
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
 
-    def step(self, action):
-        image, reward, done, info = self.env.step(action)
-        return self.observe(image), reward, done, info
+        with self.LOCK:
+            image, info = self.env.reset(seed=seed, options=options)  # type: ignore
+        return self.observe(image), {}
+
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        image, reward, terminated, truncated, info = self.env.step(action)
+        return self.observe(image), reward, terminated, truncated, info
 
     def observe(self, image):
         if self.flatten_img:
@@ -77,5 +81,5 @@ class Atari(gym.Env):
         else:
             return np.expand_dims(image, axis=0)
 
-    def render(self, mode):
-        return self.env.render(mode)
+    def render(self, *args, **kwargs):
+        return self.env.render(*args, **kwargs)

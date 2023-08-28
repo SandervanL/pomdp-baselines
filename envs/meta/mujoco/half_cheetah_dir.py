@@ -1,5 +1,9 @@
+from typing import SupportsFloat, Any
+
 import numpy as np
 import random
+
+from gymnasium.core import ActType, ObsType
 
 from .half_cheetah import HalfCheetahEnv
 
@@ -30,7 +34,7 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
         self._max_episode_steps = max_episode_steps
         super(HalfCheetahDirEnv, self).__init__()
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         xposbefore = self.sim.data.qpos[0]
         self.do_simulation(action, self.frame_skip)
         xposafter = self.sim.data.qpos[0]
@@ -43,7 +47,7 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
         reward = forward_reward - ctrl_cost
         done = False
         infos = dict(reward_forward=forward_reward, reward_ctrl=-ctrl_cost)
-        return observation, reward, done, infos
+        return observation, reward, done, done, infos  # TODO this might not be right
 
     def get_current_task(self):
         # for multi-task MDP

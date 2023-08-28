@@ -4,15 +4,16 @@ Perceptual catch. Original author: Michel Ma.
 Delay = (Number of runs - 1) * 7 + 6
 Time_steps = (Number of runs - 1) * 7 + 6
 """
-
+from typing import Optional, Any, SupportsFloat
 
 import numpy as np
-import gym
+import gymnasium as gym
+from gymnasium.core import ActType, ObsType
 
 
 class DelayedCatch(gym.Env):
     def __init__(
-        self, delay, grid_size=7, flatten_img=True, delayed=True, one_hot_actions=False
+            self, delay, grid_size=7, flatten_img=True, delayed=True, one_hot_actions=False
     ):
         super().__init__()
         self.grid_size = grid_size
@@ -91,7 +92,7 @@ class DelayedCatch(gym.Env):
         else:
             return np.expand_dims(canvas, axis=0)
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         self.time_step += 1
         info = {}
 
@@ -101,7 +102,7 @@ class DelayedCatch(gym.Env):
             reward = self._get_reward()
             info["reward"] = reward
             self.accumulated_reward += reward
-            return obs, 0, False, info
+            return obs, 0, True, False, info  # TODO is the terminated, truncated true and/or relevant?
 
         self._update_state(action)
 
@@ -110,14 +111,15 @@ class DelayedCatch(gym.Env):
         self.accumulated_reward += reward
 
         if not self.delayed:
-            return self.observe(), reward, False, info
+            return self.observe(), reward, False, False, info
 
         if self.time_step >= self.delay:
-            return self.observe(), self.accumulated_reward, True, info
+            return self.observe(), self.accumulated_reward, False, True, info
         else:
-            return self.observe(), 0, False, info
+            return self.observe(), 0, False, False, info
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         # Pre-generate the initial states
         self.catch_count = 0
         self.ns = np.random.randint(0, self.grid_size - 1, size=self.num_catches)
@@ -125,7 +127,7 @@ class DelayedCatch(gym.Env):
         obs = self.soft_reset()
         self.accumulated_reward = 0
         self.time_step = 0
-        return obs
+        return obs, {}
 
     def soft_reset(self):
         n = self.ns[self.catch_count]
@@ -140,7 +142,7 @@ if __name__ == "__main__":
     delay = (runs - 1) * 7 + 6
     env = DelayedCatch(delay, flatten_img=True, one_hot_actions=False)
 
-    obs = env.reset()
+    obs, info = env.reset()
     done = False
     while not done:
         obs, rew, done, info = env.step(env.action_space.sample())

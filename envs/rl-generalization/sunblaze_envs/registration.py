@@ -1,6 +1,6 @@
 import pkg_resources
 import re
-from gym import error, logger
+from gymnasium import error, logger
 
 # This format is true today, but it's *not* an official spec.
 # [username/](env-name)-v(version)    env-name is group 1, version is group 2
@@ -36,18 +36,18 @@ class EnvSpec(object):
     """
 
     def __init__(
-        self,
-        id,
-        entry_point=None,
-        trials=100,
-        reward_threshold=None,
-        local_only=False,
-        kwargs=None,
-        nondeterministic=False,
-        tags=None,
-        max_episode_steps=None,
-        max_episode_seconds=None,
-        timestep_limit=None,
+            self,
+            id,
+            entry_point=None,
+            trials=100,
+            reward_threshold=None,
+            local_only=False,
+            kwargs=None,
+            nondeterministic=False,
+            tags=None,
+            max_episode_steps=None,
+            max_episode_seconds=None,
+            timestep_limit=None,
     ):
         self.id = id
         # Evaluation parameters
@@ -145,9 +145,9 @@ class EnvRegistry(object):
         # your environment if you use these methods and don't want
         # compatibility code to be invoked.
         if (
-            hasattr(env, "_reset")
-            and hasattr(env, "_step")
-            and not getattr(env, "_gym_disable_underscore_compat", False)
+                hasattr(env, "_reset")
+                and hasattr(env, "_step")
+                and not getattr(env, "_gym_disable_underscore_compat", False)
         ):
             patch_deprecated_methods(env)
         if (env.spec.timestep_limit is not None) and not spec.tags.get("vnc"):

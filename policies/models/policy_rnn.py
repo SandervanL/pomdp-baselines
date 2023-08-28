@@ -56,7 +56,8 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.gamma = gamma
         self.tau = tau
 
-        self.algo = RL_ALGORITHMS[algo_name](**kwargs[algo_name], action_dim=action_dim)
+        self.algo = RL_ALGORITHMS[algo_name](**(kwargs[algo_name] if algo_name in kwargs else {}),
+                                             action_dim=action_dim)
 
         # Critics
         self.critic = Critic_RNN(
@@ -107,6 +108,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         obs,
         deterministic=False,
         return_log_prob=False,
+        valid_actions=None,
     ):
         prev_action = prev_action.unsqueeze(0)  # (1, B, dim)
         reward = reward.unsqueeze(0)  # (1, B, 1)
@@ -119,6 +121,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             obs=obs,
             deterministic=deterministic,
             return_log_prob=return_log_prob,
+            valid_actions=valid_actions,
         )
 
         return current_action_tuple, current_internal_state

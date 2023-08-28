@@ -288,5 +288,5 @@ dependencies:
   - typing-extensions==4.1.1
   - werkzeug==1.0.1
   - wrapt==1.12.1
-name: pomdp
+name: pomdp-baselines
 prefix: /home/mila/t/tianwei.ni/.conda/envs/pomdp

@@ -1,4 +1,7 @@
 import abc
+from typing import Optional, Any
+
+import numpy as np
 
 
 class Policy(object, metaclass=abc.ABCMeta):
@@ -14,7 +17,8 @@ class Policy(object, metaclass=abc.ABCMeta):
         """
         pass
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         pass
 
 

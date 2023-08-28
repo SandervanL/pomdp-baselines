@@ -1,12 +1,15 @@
-import gym
-from gym import spaces
+from typing import Optional, Any, SupportsFloat
+
+import gymnasium as gym
+from gymnasium import spaces, Env
 import numpy as np
+from gymnasium.core import ObsType, ActType
 
 
 class POMDPWrapper(gym.Wrapper):
-    def __init__(self, env, partially_obs_dims: list):
+    def __init__(self, env: Env, partially_obs_dims: list[int]):
         super().__init__(env)
-        self.partially_obs_dims = partially_obs_dims
+        self.partially_obs_dims: list[int] = partially_obs_dims
         # can equal to the fully-observed env
         assert 0 < len(self.partially_obs_dims) <= self.observation_space.shape[0]
 
@@ -24,14 +27,16 @@ class POMDPWrapper(gym.Wrapper):
         else:
             self.act_continuous = False
 
-    def get_obs(self, state):
+    def get_obs(self, state: np.ndarray) -> ObsType:
+        """ Get the partially observed state. """
         return state[self.partially_obs_dims].copy()
 
-    def reset(self):
-        state = self.env.reset()  # no kwargs
-        return self.get_obs(state)
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
+        state, info = self.env.reset(seed=seed, options=options)  # TODO said 'no kwargs'. Why?
+        return self.get_obs(state), info
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if self.act_continuous:
             # recover the action
             action = np.clip(action, -1, 1)  # first clip into [-1, 1]
@@ -40,19 +45,22 @@ class POMDPWrapper(gym.Wrapper):
             action = lb + (action + 1.0) * 0.5 * (ub - lb)
             action = np.clip(action, lb, ub)
 
-        state, reward, done, info = self.env.step(action)
+        state, reward, terminated, truncated, info = self.env.step(action)
 
-        return self.get_obs(state), reward, done, info
+        return self.get_obs(state), reward, terminated, truncated, info
 
 
-if __name__ == "__main__":
+def main():
     import envs
 
     env = gym.make("HopperBLT-F-v0")
-    obs = env.reset()
     done = False
     step = 0
     while not done:
-        next_obs, rew, done, info = env.step(env.action_space.sample())
+        next_obs, rew, terminated, truncated, info = env.step(env.action_space.sample())
         step += 1
-        print(step, done, info)
+        print(step, terminated, truncated, info)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,7 +1,10 @@
+from typing import Optional, Any, SupportsFloat
+
 import matplotlib.pyplot as plt
 import numpy as np
-from gym import spaces
-from gym import Env
+from gymnasium import spaces
+from gymnasium import Env
+from gymnasium.core import ActType, ObsType
 from matplotlib.patches import Rectangle
 
 
@@ -14,12 +17,12 @@ class PointEnv(Env):
     """
 
     def __init__(
-        self,
-        max_episode_steps=60,
-        n_tasks=2,  # this will be modified to 100 in config
-        modify_init_state_dist=True,
-        on_circle_init_state=True,
-        **kwargs
+            self,
+            max_episode_steps=60,
+            n_tasks=2,  # this will be modified to 100 in config
+            modify_init_state_dist=True,
+            on_circle_init_state=True,
+            **kwargs
     ):
 
         self.n_tasks = n_tasks
@@ -63,21 +66,22 @@ class PointEnv(Env):
         self._state = np.random.uniform(-1.0, 1.0, size=(2,))
         return self._get_obs()
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.step_count = 0
         return self.reset_model()
 
     def _get_obs(self):
         return np.copy(self._state)
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         self._state = self._state + action
         reward = -(
-            (
-                (self._state[0] - self._goal[0]) ** 2
-                + (self._state[1] - self._goal[1]) ** 2
-            )
-            ** 0.5
+                (
+                        (self._state[0] - self._goal[0]) ** 2
+                        + (self._state[1] - self._goal[1]) ** 2
+                )
+                ** 0.5
         )
 
         # check if maximum step limit is reached
@@ -88,11 +92,11 @@ class PointEnv(Env):
             done = False
 
         ob = self._get_obs()
-        return ob, reward, done, dict()
+        return ob, reward, done, done, dict()  # TODO this might not be right
 
     def reward(self, state, action=None):
         return -(
-            ((state[0] - self._goal[0]) ** 2 + (state[1] - self._goal[1]) ** 2) ** 0.5
+                ((state[0] - self._goal[0]) ** 2 + (state[1] - self._goal[1]) ** 2) ** 0.5
         )
 
     def viewer_setup(self):
@@ -112,13 +116,13 @@ class SparsePointEnv(PointEnv):
     """
 
     def __init__(
-        self,
-        max_episode_steps=60,
-        n_tasks=2,
-        goal_radius=0.2,
-        modify_init_state_dist=True,
-        on_circle_init_state=True,
-        **kwargs
+            self,
+            max_episode_steps=60,
+            n_tasks=2,
+            goal_radius=0.2,
+            modify_init_state_dist=True,
+            on_circle_init_state=True,
+            **kwargs
     ):
         super().__init__(max_episode_steps, n_tasks)
         self.goal_radius = goal_radius
@@ -150,12 +154,12 @@ class SparsePointEnv(PointEnv):
                 [np.random.uniform(-1.5, 1.5), np.random.uniform(-0.5, 1.5)]
             )
             if (
-                not self.on_circle_init_state
+                    not self.on_circle_init_state
             ):  # make sure initial state is not on semi-circle
                 while (
-                    1 - self.goal_radius
-                    <= np.linalg.norm(self._state)
-                    <= 1 + self.goal_radius
+                        1 - self.goal_radius
+                        <= np.linalg.norm(self._state)
+                        <= 1 + self.goal_radius
                 ):
                     self._state = np.array(
                         [np.random.uniform(-1.5, 1.5), np.random.uniform(-0.5, 1.5)]
@@ -164,8 +168,8 @@ class SparsePointEnv(PointEnv):
             self._state = np.array([0, 0])
         return self._get_obs()
 
-    def step(self, action):
-        ob, reward, done, d = super().step(action)
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        ob, reward, terminated, truncated, info = super().step(action)
         sparse_reward = self.sparsify_rewards(reward)
         # make sparse rewards positive
         if reward >= -self.goal_radius:
@@ -173,7 +177,7 @@ class SparsePointEnv(PointEnv):
             sparse_reward = 1
         d.update({"sparse_reward": sparse_reward})
         # return ob, reward, done, d
-        return ob, sparse_reward, done, d
+        return ob, sparse_reward, terminated, truncated, info
 
     def reward(self, state, action=None):
         return self.sparsify_rewards(super().reward(state, action))

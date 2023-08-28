@@ -30,7 +30,7 @@ class Ball(PhysicalObject):
         )
         return body
 
-    def step(self):
+    def step(self) -> None:
         super(Ball, self).step()
 
         speed = self._body.linearVelocity.length
@@ -309,7 +309,7 @@ class BreakoutWorld(PhysicalWorld):
             )
         )
 
-    def step(self):
+    def step(self) -> None:
         """Perform one environment update step."""
         if self._lives <= 0:
             self.reset_world()

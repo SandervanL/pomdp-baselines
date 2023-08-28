@@ -1,11 +1,12 @@
 import os
+from typing import Optional, Any
 
 import Box2D as box_2d
 import cocos
 import numpy as np
 import pyglet
-from gym import error, spaces
-from gym.utils import seeding
+from gymnasium import error, spaces
+from gymnasium.utils import seeding
 
 from .base import BaseGymEnvironment
 
@@ -85,7 +86,7 @@ class PhysicalObject(cocos.sprite.Sprite):
         """Create the entity in the physics engine."""
         raise NotImplementedError
 
-    def step(self):
+    def step(self) -> None:
         """Update actual object based on physical entity."""
         if not self._body:
             return
@@ -221,7 +222,7 @@ class PhysicalWorld(cocos.layer.Layer):
 
         self._destroy_queue = []
 
-    def step(self):
+    def step(self) -> None:
         """Perform one simulation step."""
         self.process_destroy_queue()
         self._engine.Step(1.0 / self.fps, 6 * 30, 2 * 30)
@@ -277,12 +278,13 @@ class PhysicalEnvironment:
     def is_terminal(self):
         return self._world.is_terminal
 
-    def step(self):
+    def step(self) -> None:
         """Perform one environment update step."""
         self._world.step()
         return self.is_terminal
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> None:
         """Reset the world."""
         self._world.reset_world()
 

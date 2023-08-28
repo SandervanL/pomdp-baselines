@@ -1,8 +1,10 @@
 import abc
+from typing import Any, Mapping
+
 import numpy as np
 from collections import OrderedDict
 
-from torch import nn as nn
+from torch import nn as nn, Tensor
 from torch.autograd import Variable
 
 from torchkit import pytorch_utils as ptu
@@ -10,31 +12,35 @@ from torchkit.serializable import Serializable
 
 
 class PyTorchModule(nn.Module, Serializable, metaclass=abc.ABCMeta):
-    def get_param_values(self):
+    def get_param_values(self) -> dict[str, Any]:
+        """ Get the parameters (state_dict) of the model. """
         return self.state_dict()
 
-    def set_param_values(self, param_values):
+    def set_param_values(self, param_values) -> None:
+        """ Set the parameters (state_dict) of the model. """
         self.load_state_dict(param_values)
 
-    def get_param_values_np(self):
+    def get_param_values_np(self) -> OrderedDict:
+        """ Get the parameters (state_dict) of the model in numpy arrays."""
         state_dict = self.state_dict()
         np_dict = OrderedDict()
         for key, tensor in state_dict.items():
             np_dict[key] = ptu.get_numpy(tensor)
         return np_dict
 
-    def set_param_values_np(self, param_values):
+    def set_param_values_np(self, param_values: Mapping[str, np.ndarray]) -> None:
+        """ Set the parameters (state_dict) of the model from numpy arrays."""
         torch_dict = OrderedDict()
         for key, tensor in param_values.items():
             torch_dict[key] = ptu.from_numpy(tensor)
         self.load_state_dict(torch_dict)
 
-    def copy(self):
+    def copy(self) -> 'PyTorchModule':
         copy = Serializable.clone(self)
         ptu.copy_model_params_from_to(self, copy)
         return copy
 
-    def save_init_params(self, locals):
+    def save_init_params(self, local_vars: dict):
         """
         Should call this FIRST THING in the __init__ method if you ever want
         to serialize or clone this network.
@@ -45,10 +51,10 @@ class PyTorchModule(nn.Module, Serializable, metaclass=abc.ABCMeta):
             self.init_serialization(locals())
             ...
         ```
-        :param locals:
+        :param local_vars: the locals dict from your __init__ method
         :return:
         """
-        Serializable.quick_init(self, locals)
+        Serializable.quick_init(self, local_vars)
 
     def __getstate__(self):
         d = Serializable.__getstate__(self)
@@ -62,7 +68,7 @@ class PyTorchModule(nn.Module, Serializable, metaclass=abc.ABCMeta):
     def regularizable_parameters(self):
         """
         Return generator of regularizable parameters. Right now, all non-flat
-        vectors are assumed to be regularizabled, presumably because only
+        vectors are assumed to be regularizable, presumably because only
         biases are flat.
 
         :return:
@@ -90,6 +96,7 @@ class PyTorchModule(nn.Module, Serializable, metaclass=abc.ABCMeta):
 
 
 def torch_ify(np_array_or_other):
+    """ Turn a numpy array into a torch Tensor. """
     if isinstance(np_array_or_other, np.ndarray):
         return ptu.from_numpy(np_array_or_other)
     else:
@@ -97,6 +104,7 @@ def torch_ify(np_array_or_other):
 
 
 def np_ify(tensor_or_other):
+    """ Turn a torch Tensor into a numpy array. """
     if isinstance(tensor_or_other, Variable):
         return ptu.get_numpy(tensor_or_other)
     else:

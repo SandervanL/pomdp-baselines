@@ -1,25 +1,28 @@
-import gym
+from typing import Optional, Any, SupportsFloat
+
+import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import random
-from gym import spaces
-from gym.utils import seeding
+from gymnasium import spaces
+from gymnasium.core import ActType, ObsType
+from gymnasium.utils import seeding
 from torchkit import pytorch_utils as ptu
 from matplotlib.patches import Rectangle
 
 
 class GridNavi(gym.Env):
     def __init__(
-        self,
-        num_cells=5,
-        num_steps=15,
-        n_tasks=2,
-        modify_init_state_dist=False,
-        is_sparse=False,
-        return_belief_rewards=False,  # output R+ instead of R
-        seed=None,
-        **kwargs
+            self,
+            num_cells=5,
+            num_steps=15,
+            n_tasks=2,
+            modify_init_state_dist=False,
+            is_sparse=False,
+            return_belief_rewards=False,  # output R+ instead of R
+            seed=None,
+            **kwargs
     ):
         super(GridNavi, self).__init__()
 
@@ -118,7 +121,8 @@ class GridNavi(gym.Env):
             self._belief_state = np.ceil(self._belief_state)
             self._belief_state /= sum(self._belief_state)
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.step_count = 0
         return self.reset_model()
 
@@ -142,7 +146,7 @@ class GridNavi(gym.Env):
         elif action == 4:  # left
             self._state[0] = max([self._state[0] - 1, 0])
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if isinstance(action, np.ndarray) and action.ndim == 1:
             action = action[0]
         assert self.action_space.contains(action)
@@ -168,7 +172,7 @@ class GridNavi(gym.Env):
         # compute reward
         reward = self.reward(self._state)
 
-        return self.get_obs(), reward, done, info
+        return self.get_obs(), reward, done, done, info  # TODO this might not be right
 
     def _compute_belief_reward(self):
         num_possible_goal_belief = np.sum(
@@ -176,8 +180,8 @@ class GridNavi(gym.Env):
         )  # num. goals for which belief isn't 0
         non_goal_rew = 0.0 if self.is_sparse else -0.1
         belief_reward = (
-            1.0 + non_goal_rew * (num_possible_goal_belief - 1)
-        ) / num_possible_goal_belief
+                                1.0 + non_goal_rew * (num_possible_goal_belief - 1)
+                        ) / num_possible_goal_belief
         return belief_reward
 
     def is_goal_state(self):

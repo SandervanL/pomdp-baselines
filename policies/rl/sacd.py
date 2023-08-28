@@ -56,8 +56,9 @@ class SACD(RLAlgorithmBase):
         )
         return qf1, qf2
 
-    def select_action(self, actor, observ, deterministic: bool, return_log_prob: bool):
-        action, prob, log_prob = actor(observ, deterministic, return_log_prob)
+    def select_action(self, actor, observ, deterministic: bool, return_log_prob: bool,
+                      valid_actions=None):
+        action, prob, log_prob = actor(observ, deterministic, return_log_prob, valid_actions)
         return action, prob, log_prob, None
 
     @staticmethod

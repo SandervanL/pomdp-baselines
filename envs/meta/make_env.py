@@ -1,6 +1,7 @@
-import gym
+import gymnasium as gym
 
 from envs.meta.wrappers import VariBadWrapper
+
 
 # In VariBAD, they use on-policy PPO by vectorized env.
 # In BOReL, they use off-policy SAC by single env.

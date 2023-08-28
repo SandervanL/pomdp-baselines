@@ -1,22 +1,26 @@
+from typing import Optional, Any, SupportsFloat
+
 import numpy as np
-import gym
+import gymnasium as gym
+from gymnasium.core import ActType, ObsType
+
 from envs.credit_assign.key_to_door import env, key_to_door
 
 
 class KeyToDoor(gym.Env):
     def __init__(
-        self,
-        num_apples=10,
-        apple_reward=1.0,
-        fix_apple_reward_in_episode=True,
-        final_reward=10.0,
-        default_reward=0,
-        respawn_every=20,
-        REWARD_GRID=key_to_door.REWARD_GRID_SR,
-        max_frames=key_to_door.MAX_FRAMES_PER_PHASE_SR,
-        crop=True,
-        flatten_img=True,
-        one_hot_actions=False,
+            self,
+            num_apples=10,
+            apple_reward=1.0,
+            fix_apple_reward_in_episode=True,
+            final_reward=10.0,
+            default_reward=0,
+            respawn_every=20,
+            REWARD_GRID=key_to_door.REWARD_GRID_SR,
+            max_frames=key_to_door.MAX_FRAMES_PER_PHASE_SR,
+            crop=True,
+            flatten_img=True,
+            one_hot_actions=False,
     ):
         super().__init__()
         self.pycolab_env = env.PycolabEnvironment(
@@ -56,7 +60,7 @@ class KeyToDoor(gym.Env):
             new_obs = new_obs.flatten()  # -> (C*H*W)
         return new_obs
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if self.one_hot_actions:
             action = np.argmax(action)
         obs, r = self.pycolab_env.step(action)
@@ -65,23 +69,24 @@ class KeyToDoor(gym.Env):
         info = {}
 
         if self.pycolab_env._episode.game_over:
-            done = True
+            terminated = True
             info["success"] = self.pycolab_env.last_phase_reward() > 0.0
         else:
-            done = False
+            terminated = False
 
-        return self._convert_obs(obs), r, done, info
+        return self._convert_obs(obs), r, terminated, False, info
 
-    def reset(self):
-        obs, _ = self.pycolab_env.reset()
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
+        obs, info = self.pycolab_env.reset()
         self._ret = 0.0
 
-        return self._convert_obs(obs)
+        return self._convert_obs(obs), {}
 
 
 if __name__ == "__main__":
     env = KeyToDoor()
-    obs = env.reset()
+    obs, info = env.reset()
     done = False
     t = 0
     while not done:

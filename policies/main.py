@@ -1,5 +1,6 @@
-# -*- coding: future_fstrings -*-
-import sys, os, time
+import os
+import sys
+import time
 
 t0 = time.time()
 import socket
@@ -151,7 +152,6 @@ key_flags = FLAGS.get_key_flags_for_module(sys.argv[0])
 logger.log("\n".join(f.serialize() for f in key_flags) + "\n")
 logger.log("pid", pid, socket.gethostname())
 os.makedirs(os.path.join(logger.get_dir(), "save"))
-
 
 # start training
 learner = Learner(

@@ -1,4 +1,7 @@
+from typing import SupportsFloat, Any
+
 import numpy as np
+from gymnasium.core import ActType, ObsType
 
 from .mujoco_env import MujocoEnv
 
@@ -16,7 +19,7 @@ class AntEnv(MujocoEnv):
             automatically_set_obs_and_action_space=True,
         )
 
-    def step(self, a):
+    def step(self, a: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         torso_xyz_before = self.get_body_com("torso")
         self.do_simulation(a, self.frame_skip)
         torso_xyz_after = self.get_body_com("torso")
@@ -24,7 +27,7 @@ class AntEnv(MujocoEnv):
         forward_reward = torso_velocity[0] / self.dt
         ctrl_cost = 0.0  # .5 * np.square(a).sum()
         contact_cost = (
-            0.5 * 1e-3 * np.sum(np.square(np.clip(self.sim.data.cfrc_ext, -1, 1)))
+                0.5 * 1e-3 * np.sum(np.square(np.clip(self.sim.data.cfrc_ext, -1, 1)))
         )
         survive_reward = 0.0  # 1.0
         reward = forward_reward - ctrl_cost - contact_cost + survive_reward
@@ -35,6 +38,7 @@ class AntEnv(MujocoEnv):
         return (
             ob,
             reward,
+            done,  # This is not correct
             done,
             dict(
                 reward_forward=forward_reward,

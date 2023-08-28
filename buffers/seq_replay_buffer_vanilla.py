@@ -45,9 +45,9 @@ class SeqReplayBuffer:
         # NOTE: so we cannot use terminals to determine the trajectory boundary!
         self._terminals = np.zeros((max_replay_buffer_size, 1), dtype=np.uint8)
 
-        # NOTE: valid_starts are (internal) masks which is 1 (or postive number as weight)
+        # NOTE: valid_starts are (internal) masks which is 1 (or positive number as weight)
         # 	if we can SAMPLE the (sub)sequence FROM this index else 0.
-        # For each trajectory, the first index has valid_start as 1 (or postive number),
+        # For each trajectory, the first index has valid_start as 1 (or positive number),
         # 	the LAST sampled_seq_len indices are 0s, and the middle ones are 1s (or positive numbers)
         # 	That is to say, if its length <= sampled_seq_len, then the valid_starts looks like 100000000
         # 	else looks like 11111000000 (have sampled_seq_len - 1 zeros)

@@ -7,7 +7,7 @@ import os
 import torch
 import torch.nn as nn
 import torchkit.pytorch_utils as ptu
-from gym.spaces import Box, Discrete, Tuple
+from gymnasium.spaces import Box, Discrete, Tuple
 from itertools import product
 
 
@@ -47,7 +47,8 @@ def env_step(env, action):
     action = ptu.get_numpy(action)
     if env.action_space.__class__.__name__ == "Discrete":
         action = np.argmax(action)  # one-hot to int
-    next_obs, reward, done, info = env.step(action)
+    next_obs, reward, terminated, truncated, info = env.step(action)
+    done = terminated or truncated
 
     # move to torch
     next_obs = ptu.from_numpy(next_obs).view(-1, next_obs.shape[0])
@@ -71,7 +72,7 @@ def unpack_batch(batch):
 
 
 def select_action(
-    args, policy, obs, deterministic, task_sample=None, task_mean=None, task_logvar=None
+        args, policy, obs, deterministic, task_sample=None, task_mean=None, task_logvar=None
 ):
     """
     Select action using the policy.
@@ -90,7 +91,6 @@ def select_action(
 
 
 def get_augmented_obs(args, obs, posterior_sample=None, task_mu=None, task_std=None):
-
     obs_augmented = obs.clone()
 
     if posterior_sample is None:
@@ -115,7 +115,6 @@ def get_augmented_obs(args, obs, posterior_sample=None, task_mu=None, task_std=N
 
 
 def update_encoding(encoder, obs, action, reward, done, hidden_state):
-
     # reset hidden state of the recurrent net when we reset the task
     if done is not None:
         hidden_state = encoder.reset_hidden(hidden_state, done)
@@ -146,10 +145,10 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
 
 
 def recompute_embeddings(
-    policy_storage,
-    encoder,
-    sample,
-    update_idx,
+        policy_storage,
+        encoder,
+        sample,
+        update_idx,
 ):
     # get the prior
     task_sample = [policy_storage.task_samples[0].detach().clone()]
@@ -169,9 +168,9 @@ def recompute_embeddings(
         h = encoder.reset_hidden(h, reset_task)
 
         ts, tm, tl, h = encoder(
-            policy_storage.actions.float()[i : i + 1],
-            policy_storage.next_obs_raw[i : i + 1],
-            policy_storage.rewards_raw[i : i + 1],
+            policy_storage.actions.float()[i: i + 1],
+            policy_storage.next_obs_raw[i: i + 1],
+            policy_storage.rewards_raw[i: i + 1],
             h,
             sample=sample,
             return_prior=False,
@@ -185,8 +184,8 @@ def recompute_embeddings(
         try:
             assert (torch.cat(policy_storage.task_mu) - torch.cat(task_mean)).sum() == 0
             assert (
-                torch.cat(policy_storage.task_logvar) - torch.cat(task_logvar)
-            ).sum() == 0
+                           torch.cat(policy_storage.task_logvar) - torch.cat(task_logvar)
+                   ).sum() == 0
         except AssertionError:
             warnings.warn("You are not recomputing the embeddings correctly!")
             import pdb

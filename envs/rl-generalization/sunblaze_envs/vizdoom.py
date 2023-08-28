@@ -3,9 +3,9 @@ import itertools
 import os
 import tempfile
 
-import gym
-from gym import error, spaces
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium import error, spaces
+from gymnasium.utils import seeding
 import numpy as np
 import vizdoom
 import omg
@@ -248,8 +248,8 @@ class VizDoomEnvironment(gym.Env):
             valid = True
             for a, b in self.opposite_button_pairs:
                 if (
-                    combination[self.buttons.index(a)]
-                    and combination[self.buttons.index(b)]
+                        combination[self.buttons.index(a)]
+                        and combination[self.buttons.index(b)]
                 ):
                     valid = False
                     break

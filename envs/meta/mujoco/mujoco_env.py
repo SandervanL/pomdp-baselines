@@ -3,7 +3,7 @@ from os import path
 
 import mujoco_py
 import numpy as np
-from gym.envs.mujoco import mujoco_env
+from gymnasium.envs.mujoco import mujoco_env
 
 from .core.serializable import Serializable
 
@@ -18,11 +18,11 @@ class MujocoEnv(mujoco_env.MujocoEnv, Serializable):
     """
 
     def __init__(
-        self,
-        model_path,
-        frame_skip=1,
-        model_path_is_local=True,
-        automatically_set_obs_and_action_space=False,
+            self,
+            model_path,
+            frame_skip=1,
+            model_path_is_local=True,
+            automatically_set_obs_and_action_space=False,
     ):
         if model_path_is_local:
             model_path = get_asset_xml(model_path)

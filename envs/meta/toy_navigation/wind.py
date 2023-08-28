@@ -1,7 +1,10 @@
+from typing import Optional, Any, SupportsFloat
+
 import matplotlib.pyplot as plt
 import numpy as np
-from gym import spaces
-from gym import Env
+from gymnasium import spaces
+from gymnasium import Env
+from gymnasium.core import ActType, ObsType
 
 
 class WindEnv(Env):
@@ -13,11 +16,11 @@ class WindEnv(Env):
     """
 
     def __init__(
-        self,
-        max_episode_steps=75,
-        n_tasks=1,  # this will be modified in config
-        goal_radius=0.03,
-        **kwargs
+            self,
+            max_episode_steps=75,
+            n_tasks=1,  # this will be modified in config
+            goal_radius=0.03,
+            **kwargs
     ):
 
         self.n_tasks = n_tasks
@@ -61,14 +64,15 @@ class WindEnv(Env):
         self._state = np.array([0.0, 0.0])
         return self._get_obs()
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.step_count = 0
         return self.reset_model()
 
     def _get_obs(self):
         return np.copy(self._state)
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         self._state = self._state + action + self._wind  # add wind to transition
 
         # sparse reward
@@ -85,7 +89,7 @@ class WindEnv(Env):
             done = False
 
         ob = self._get_obs()
-        return ob, reward, done, dict()
+        return ob, reward, done, done, dict()  # TODO this might not be right
 
     def viewer_setup(self):
         print("no viewer")

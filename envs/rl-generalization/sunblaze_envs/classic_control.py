@@ -1,9 +1,11 @@
 import math
+from typing import Optional, Any, SupportsFloat
 
-from gym.envs.classic_control.cartpole import CartPoleEnv
-from gym.envs.classic_control.mountain_car import MountainCarEnv
-from gym.envs.classic_control.acrobot import AcrobotEnv
-from gym.envs.classic_control.pendulum import PendulumEnv
+from gymnasium.core import ActType, ObsType
+from gymnasium.envs.classic_control.cartpole import CartPoleEnv
+from gymnasium.envs.classic_control.mountain_car import MountainCarEnv
+from gymnasium.envs.classic_control.acrobot import AcrobotEnv
+from gymnasium.envs.classic_control.pendulum import PendulumEnv
 import numpy as np
 
 from .base import EnvBinarySuccessMixin
@@ -32,7 +34,6 @@ def uniform_exclude_inner(np_uniform, a, b, a_i, b_i):
 
 
 class ModifiableCartPoleEnv(CartPoleEnv, EnvBinarySuccessMixin):
-
     RANDOM_LOWER_FORCE_MAG = 5.0
     RANDOM_UPPER_FORCE_MAG = 15.0
     EXTREME_LOWER_FORCE_MAG = 1.0
@@ -53,11 +54,13 @@ class ModifiableCartPoleEnv(CartPoleEnv, EnvBinarySuccessMixin):
         self.total_mass = self.masspole + self.masscart
         self.polemass_length = self.masspole * self.length
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         """new is a boolean variable telling whether to regenerate the environment parameters"""
         """Default is to just ignore it"""
         self.nsteps = 0
-        return super(ModifiableCartPoleEnv, self).reset()
+        return super(ModifiableCartPoleEnv, self).reset(seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -125,14 +128,16 @@ class RandomStrongPushCartPole(ModifiableCartPoleEnv):
             self.RANDOM_LOWER_FORCE_MAG, self.RANDOM_UPPER_FORCE_MAG
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         if new:
             self.force_mag = self.np_random.uniform(
                 self.RANDOM_LOWER_FORCE_MAG, self.RANDOM_UPPER_FORCE_MAG
             )
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -156,7 +161,9 @@ class RandomWeakPushCartPole(ModifiableCartPoleEnv):
             self.RANDOM_UPPER_FORCE_MAG,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         if new:
@@ -167,7 +174,7 @@ class RandomWeakPushCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_LOWER_FORCE_MAG,
                 self.RANDOM_UPPER_FORCE_MAG,
             )
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -222,7 +229,9 @@ class RandomLongPoleCartPole(ModifiableCartPoleEnv):
         )
         self._followup()
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         if new:
@@ -230,7 +239,7 @@ class RandomLongPoleCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
             )
             self._followup()
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -255,7 +264,9 @@ class RandomShortPoleCartPole(ModifiableCartPoleEnv):
         )
         self._followup()
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         if new:
@@ -267,7 +278,7 @@ class RandomShortPoleCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_UPPER_LENGTH,
             )
             self._followup()
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -322,7 +333,9 @@ class RandomHeavyPoleCartPole(ModifiableCartPoleEnv):
         )
         self._followup()
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         if new:
@@ -330,7 +343,7 @@ class RandomHeavyPoleCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_LOWER_MASSPOLE, self.RANDOM_UPPER_MASSPOLE
             )
             self._followup()
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -355,7 +368,9 @@ class RandomLightPoleCartPole(ModifiableCartPoleEnv):
         )
         self._followup()
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
         if new:
@@ -367,7 +382,7 @@ class RandomLightPoleCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_UPPER_MASSPOLE,
             )
             self._followup()
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -394,7 +409,9 @@ class RandomNormalCartPole(ModifiableCartPoleEnv):
         )
         self._followup()
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.nsteps = 0  # for super.is_success()
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
@@ -409,7 +426,7 @@ class RandomNormalCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_LOWER_MASSPOLE, self.RANDOM_UPPER_MASSPOLE
             )
             self._followup()
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -472,7 +489,9 @@ class RandomExtremeCartPole(ModifiableCartPoleEnv):
         # self.force_mag = 10.0
         # self.tau = 0.02  # seconds between state updates
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.nsteps = 0  # for super.is_success()
         self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
         self.steps_beyond_done = None
@@ -504,7 +523,7 @@ class RandomExtremeCartPole(ModifiableCartPoleEnv):
                 self.RANDOM_UPPER_MASSPOLE,
             )
             self._followup()
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -543,7 +562,7 @@ class ModifiableMountainCarEnv(MountainCarEnv):
         self.force = 0.001
         self.mass = 0.0025
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Rewritten to remove hard-coding of values in original code"""
         assert self.action_space.contains(action), "%r (%s) invalid" % (
             action,
@@ -575,11 +594,13 @@ class ModifiableMountainCarEnv(MountainCarEnv):
         ###
 
         self.state = (position, velocity)
-        return np.array(self.state), reward, done, {}
+        return np.array(self.state), reward, done, done, {}  # TODO this might not be right
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.nsteps = 0
-        return super(ModifiableMountainCarEnv, self).reset()
+        return super(ModifiableMountainCarEnv, self).reset(seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -632,13 +653,15 @@ class StrongForceMountainCar(ModifiableMountainCarEnv):
 
 
 class RandomStrongForceMountainCar(ModifiableMountainCarEnv):
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.force = self.np_random.uniform(
                 self.RANDOM_LOWER_FORCE, self.RANDOM_UPPER_FORCE
             )
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -652,7 +675,9 @@ class RandomStrongForceMountainCar(ModifiableMountainCarEnv):
 
 
 class RandomWeakForceMountainCar(ModifiableMountainCarEnv):
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.force = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -662,7 +687,7 @@ class RandomWeakForceMountainCar(ModifiableMountainCarEnv):
                 self.RANDOM_UPPER_FORCE,
             )
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -708,13 +733,15 @@ class HeavyCarMountainCar(ModifiableMountainCarEnv):
 
 
 class RandomHeavyCarMountainCar(ModifiableMountainCarEnv):
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = self.np_random.uniform(
                 self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
             )
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -728,7 +755,9 @@ class RandomHeavyCarMountainCar(ModifiableMountainCarEnv):
 
 
 class RandomLightCarMountainCar(ModifiableMountainCarEnv):
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -738,7 +767,7 @@ class RandomLightCarMountainCar(ModifiableMountainCarEnv):
                 self.RANDOM_UPPER_MASS,
             )
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -752,7 +781,9 @@ class RandomLightCarMountainCar(ModifiableMountainCarEnv):
 
 
 class RandomNormalMountainCar(ModifiableMountainCarEnv):
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.nsteps = 0  # for is_success()
         if new:
             self.force = self.np_random.uniform(
@@ -762,7 +793,7 @@ class RandomNormalMountainCar(ModifiableMountainCarEnv):
                 self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
             )
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -779,7 +810,9 @@ class RandomNormalMountainCar(ModifiableMountainCarEnv):
 class RandomExtremeMountainCar(ModifiableMountainCarEnv):
 
     # TODO(cpacker): Is there any reason to not have an __init__?
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.nsteps = 0  # for is_success()
         if new:
             self.force = uniform_exclude_inner(
@@ -798,7 +831,7 @@ class RandomExtremeMountainCar(ModifiableMountainCarEnv):
             )
 
         self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        return np.array(self.state)
+        return np.array(self.state), {}
 
     @property
     def parameters(self):
@@ -834,7 +867,7 @@ class ModifiablePendulumEnv(PendulumEnv):
         self.mass = 1.0
         self.length = 1.0
 
-    def step(self, u):
+    def step(self, u: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         th, thdot = self.state
         g = 10.0
         dt = self.dt
@@ -845,12 +878,12 @@ class ModifiablePendulumEnv(PendulumEnv):
         costs = angle_normalize ** 2 + 0.1 * thdot ** 2 + 0.001 * (u ** 2)
 
         newthdot = (
-            thdot
-            + (
-                -3 * g / (2 * self.length) * np.sin(th + np.pi)
-                + 3.0 / (self.mass * self.length ** 2) * u
-            )
-            * dt
+                thdot
+                + (
+                        -3 * g / (2 * self.length) * np.sin(th + np.pi)
+                        + 3.0 / (self.mass * self.length ** 2) * u
+                )
+                * dt
         )
         newth = th + newthdot * dt
         newthdot = np.clip(newthdot, -self.max_speed, self.max_speed)
@@ -877,13 +910,15 @@ class ModifiablePendulumEnv(PendulumEnv):
             #      self.nsteps, self.nsteps_vertical, target))
             self.success = False
 
-        return self._get_obs(), -costs, False, {}
+        return self._get_obs(), -costs, False, False, {}
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         # Extra state for is_success()
         self.nsteps = 0
         self.nsteps_vertical = 0
-        return super(ModifiablePendulumEnv, self).reset()
+        return super(ModifiablePendulumEnv, self).reset(seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -940,12 +975,14 @@ class RandomHeavyPendulum(ModifiablePendulumEnv):
             self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = self.np_random.uniform(
                 self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
             )
-        return super(RandomHeavyPendulum, self).reset(new)
+        return super(RandomHeavyPendulum, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -969,7 +1006,9 @@ class RandomLightPendulum(ModifiablePendulumEnv):
             self.RANDOM_UPPER_MASS,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -978,7 +1017,7 @@ class RandomLightPendulum(ModifiablePendulumEnv):
                 self.RANDOM_LOWER_MASS,
                 self.RANDOM_UPPER_MASS,
             )
-        return super(RandomLightPendulum, self).reset(new)
+        return super(RandomLightPendulum, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1030,12 +1069,14 @@ class RandomLongPendulum(ModifiablePendulumEnv):
             self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.length = self.np_random.uniform(
                 self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
             )
-        return super(RandomLongPendulum, self).reset(new)
+        return super(RandomLongPendulum, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1059,7 +1100,9 @@ class RandomShortPendulum(ModifiablePendulumEnv):
             self.RANDOM_UPPER_LENGTH,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.length = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -1068,7 +1111,7 @@ class RandomShortPendulum(ModifiablePendulumEnv):
                 self.RANDOM_LOWER_LENGTH,
                 self.RANDOM_UPPER_LENGTH,
             )
-        return super(RandomShortPendulum, self).reset(new)
+        return super(RandomShortPendulum, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1091,7 +1134,9 @@ class RandomNormalPendulum(ModifiablePendulumEnv):
             self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = self.np_random.uniform(
                 self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
@@ -1099,7 +1144,7 @@ class RandomNormalPendulum(ModifiablePendulumEnv):
             self.length = self.np_random.uniform(
                 self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
             )
-        return super(RandomNormalPendulum, self).reset(new)
+        return super(RandomNormalPendulum, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1131,7 +1176,9 @@ class RandomExtremePendulum(ModifiablePendulumEnv):
             self.RANDOM_UPPER_LENGTH,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -1147,7 +1194,7 @@ class RandomExtremePendulum(ModifiablePendulumEnv):
                 self.RANDOM_LOWER_LENGTH,
                 self.RANDOM_UPPER_LENGTH,
             )
-        return super(RandomExtremePendulum, self).reset(new)
+        return super(RandomExtremePendulum, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1165,7 +1212,6 @@ class RandomExtremePendulum(ModifiablePendulumEnv):
 
 
 class ModifiableAcrobotEnv(AcrobotEnv):
-
     RANDOM_LOWER_MASS = 0.75
     RANDOM_UPPER_MASS = 1.25
     EXTREME_LOWER_MASS = 0.5
@@ -1181,9 +1227,11 @@ class ModifiableAcrobotEnv(AcrobotEnv):
     EXTREME_LOWER_INERTIA = 0.5
     EXTREME_UPPER_INERTIA = 1.5
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         self.nsteps = 0
-        return super(ModifiableAcrobotEnv, self).reset()
+        return super(ModifiableAcrobotEnv, self).reset(seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1279,12 +1327,13 @@ class RandomHeavyAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> tuple[np.ndarray, dict]:
         if new:
             self.mass = self.np_random.uniform(
                 self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
             )
-        return super(RandomHeavyAcrobot, self).reset(new)
+        return super(RandomHeavyAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def LINK_MASS_1(self):
@@ -1316,7 +1365,9 @@ class RandomLightAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_UPPER_MASS,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -1325,7 +1376,7 @@ class RandomLightAcrobot(ModifiableAcrobotEnv):
                 self.RANDOM_LOWER_MASS,
                 self.RANDOM_UPPER_MASS,
             )
-        return super(RandomLightAcrobot, self).reset(new)
+        return super(RandomLightAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def LINK_MASS_1(self):
@@ -1401,12 +1452,14 @@ class RandomLongAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.length = self.np_random.uniform(
                 self.RANDOM_LOWER_LENGTH, self.RANDOM_UPPER_LENGTH
             )
-        return super(RandomLongAcrobot, self).reset(new)
+        return super(RandomLongAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def LINK_LENGTH_1(self):
@@ -1438,7 +1491,9 @@ class RandomShortAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_UPPER_LENGTH,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.length = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -1447,7 +1502,7 @@ class RandomShortAcrobot(ModifiableAcrobotEnv):
                 self.RANDOM_LOWER_LENGTH,
                 self.RANDOM_UPPER_LENGTH,
             )
-        return super(RandomShortAcrobot, self).reset(new)
+        return super(RandomShortAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def LINK_LENGTH_1(self):
@@ -1515,12 +1570,14 @@ class RandomHighInertiaAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_LOWER_INERTIA, self.RANDOM_UPPER_INERTIA
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.inertia = self.np_random.uniform(
                 self.RANDOM_LOWER_INERTIA, self.RANDOM_UPPER_INERTIA
             )
-        return super(RandomHighInertiaAcrobot, self).reset(new)
+        return super(RandomHighInertiaAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def LINK_MOI(self):
@@ -1548,7 +1605,8 @@ class RandomLowInertiaAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_UPPER_INERTIA,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> tuple[np.ndarray, dict]:
         if new:
             self.inertia = self.np_random.uniform(
                 self.np_random.uniform,
@@ -1557,7 +1615,7 @@ class RandomLowInertiaAcrobot(ModifiableAcrobotEnv):
                 self.RANDOM_LOWER_INERTIA,
                 self.RANDOM_UPPER_INERTIA,
             )
-        return super(RandomLowInertiaAcrobot, self).reset(new)
+        return super(RandomLowInertiaAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def LINK_MOI(self):
@@ -1607,7 +1665,9 @@ class RandomNormalAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_LOWER_INERTIA, self.RANDOM_UPPER_INERTIA
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = self.np_random.uniform(
                 self.RANDOM_LOWER_MASS, self.RANDOM_UPPER_MASS
@@ -1619,7 +1679,7 @@ class RandomNormalAcrobot(ModifiableAcrobotEnv):
                 self.RANDOM_LOWER_INERTIA, self.RANDOM_UPPER_INERTIA
             )
         # reset just resets .state
-        return super(RandomNormalAcrobot, self).reset()
+        return super(RandomNormalAcrobot, self).reset(seed=seed, options=options)
 
     @property
     def parameters(self):
@@ -1679,7 +1739,9 @@ class RandomExtremeAcrobot(ModifiableAcrobotEnv):
             self.RANDOM_UPPER_INERTIA,
         )
 
-    def reset(self, new=True):
+    def reset(self, new=True, *, seed: Optional[int] = None,
+              options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         if new:
             self.mass = uniform_exclude_inner(
                 self.np_random.uniform,
@@ -1703,7 +1765,7 @@ class RandomExtremeAcrobot(ModifiableAcrobotEnv):
                 self.RANDOM_UPPER_INERTIA,
             )
         # reset just resets .state
-        return super(RandomExtremeAcrobot, self).reset(new)
+        return super(RandomExtremeAcrobot, self).reset(new, seed=seed, options=options)
 
     @property
     def parameters(self):

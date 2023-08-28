@@ -1,7 +1,10 @@
 import json
 import os
+from typing import Optional, Any, SupportsFloat
 
-import gym
+import gymnasium as gym
+import numpy as np
+from gymnasium.core import ActType, ObsType
 
 
 class MonitorParameters(gym.Wrapper):
@@ -23,13 +26,14 @@ class MonitorParameters(gym.Wrapper):
 
         super(MonitorParameters, self).__init__(env)
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         result = self.env.step(action)
         self.record_parameters()
         return result
 
-    def reset(self):
-        result = self.env.reset()
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
+        result = self.env.reset(seed=seed, options=options)
         self.record_parameters()
         return result
 
