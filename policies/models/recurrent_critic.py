@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from policies.models.BaseActorCritic import BaseActorCritic
+from policies.models.recurrent_base import Base_RNN
 from policies.rl.base import RLAlgorithmBase
 from utils import helpers as utl
 from torchkit.constant import *
 
 
-class Critic_RNN(BaseActorCritic):
+class Critic_RNN(Base_RNN):
     def __init__(
             self,
             dqn_layers: list[int],

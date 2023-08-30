@@ -37,15 +37,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             self,
             obs_dim: int,
             action_dim: int,
-            encoder,
             algo_name: str,
-            action_embedding_size: int,
-            observ_embedding_size: int,
-            reward_embedding_size: int,
-            task_embedding_size: Optional[int],
-            rnn_hidden_size: int,
-            dqn_layers: int,
-            policy_layers: list[int],
             rnn_num_layers: int = 1,
             lr: float = 3e-4,
             gamma: float = 0.99,
@@ -66,17 +58,12 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         # Critics
         self.critic = Critic_RNN(
-            obs_dim,
-            action_dim,
-            encoder,
-            self.algo,
-            action_embedding_size,
-            observ_embedding_size,
-            reward_embedding_size,
-            rnn_hidden_size,
-            dqn_layers,
-            rnn_num_layers,
-            image_encoder=image_encoder_fn(),  # separate weight
+            obs_dim=obs_dim,
+            action_dim=action_dim,
+            algo=self.algo,
+            rnn_num_layers=rnn_num_layers,
+            image_encoder=image_encoder_fn(),  # separate weight,
+            **kwargs,
         )
         self.critic_optimizer = Adam(self.critic.parameters(), lr=lr)
         # target networks
@@ -84,18 +71,12 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         # Actor
         self.actor = ActorRnn(
-            obs_dim,
-            action_dim,
-            encoder,
-            self.algo,
-            action_embedding_size,
-            observ_embedding_size,
-            reward_embedding_size,
-            task_embedding_size,
-            rnn_hidden_size,
-            policy_layers,
-            rnn_num_layers,
+            obs_dim=obs_dim,
+            action_dim=action_dim,
+            algo=self.algo,
+            rnn_num_layers=rnn_num_layers,
             image_encoder=image_encoder_fn(),  # separate weight
+            **kwargs,
         )
         self.actor_optimizer = Adam(self.actor.parameters(), lr=lr)
         # target networks

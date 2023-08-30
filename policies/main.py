@@ -13,7 +13,7 @@ from pathlib import Path
 import psutil
 
 from torchkit.pytorch_utils import set_gpu_mode
-from policies.learner import Learner
+from policies.learner import Learner, LEARNER_CLASS
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("cfg", None, "path to configuration file")
@@ -154,7 +154,8 @@ logger.log("pid", pid, socket.gethostname())
 os.makedirs(os.path.join(logger.get_dir(), "save"))
 
 # start training
-learner = Learner(
+learner_class = LEARNER_CLASS[v["env"]["env_type"]]
+learner = learner_class(
     env_args=v["env"],
     train_args=v["train"],
     eval_args=v["eval"],

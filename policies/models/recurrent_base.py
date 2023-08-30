@@ -2,7 +2,8 @@ import abc
 from typing import Optional
 
 import torch
-from torch import Module, Tensor
+from torch import Tensor
+from torch.nn import Module, functional as F
 
 from policies.rl.base import RLAlgorithmBase
 from utils import helpers as utl
@@ -21,7 +22,7 @@ class Base_RNN(Module, metaclass=abc.ABCMeta):
                  task_embedding_size: Optional[int],
                  rnn_hidden_size: int,
                  rnn_num_layers: int,
-                 image_encoder=None):
+                 image_encoder=None, **kwargs):
         super().__init__()
 
         self.obs_dim: int = obs_dim

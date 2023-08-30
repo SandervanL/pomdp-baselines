@@ -5,14 +5,14 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from policies.models.BaseActorCritic import BaseActorCritic
+from policies.models.recurrent_base import Base_RNN
 from policies.models.actor import MarkovPolicyBase
 from utils import helpers as utl
 from torchkit.constant import *
 import torchkit.pytorch_utils as ptu
 
 
-class ActorRnn(BaseActorCritic):
+class ActorRnn(Base_RNN):
     def __init__(
             self,
             policy_layers: list[int],
