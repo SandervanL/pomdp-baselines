@@ -4,6 +4,7 @@ import numpy as np
 
 from .Learner import Learner
 from utils import logger
+from utils import evaluation as utl_eval
 
 
 class MetaLearner(Learner):
@@ -43,7 +44,7 @@ class MetaLearner(Learner):
             self.eval_tasks = shuffled_tasks[-num_eval_tasks:]
         else:
             # NOTE: This is on-policy varibad's setting, i.e. unlimited training tasks
-            assert num_tasks == num_train_tasks == None
+            assert num_tasks is num_train_tasks is None
             assert (
                     num_eval_tasks > 0
             )  # to specify how many tasks to be evaluated each time

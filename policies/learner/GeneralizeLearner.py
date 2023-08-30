@@ -1,3 +1,4 @@
+import sys
 from typing import Optional
 
 import numpy as np
@@ -10,7 +11,7 @@ class GeneralizeLearner(Learner):
     def init_env(
             self,
             env_name: str,
-            eval_envs: Optional[int] = None,
+            eval_envs: Optional[dict[str, int]] = None,
             **kwargs
     ):
         sys.path.append("envs/rl-generalization")

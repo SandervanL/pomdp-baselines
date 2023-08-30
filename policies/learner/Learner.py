@@ -24,7 +24,6 @@ from buffers.seq_replay_buffer_efficient import RAMEfficient_SeqReplayBuffer
 
 from utils import helpers as utl
 from torchkit import pytorch_utils as ptu
-from utils import evaluation as utl_eval
 from utils import logger
 
 
@@ -44,12 +43,7 @@ class Learner:
             self,
             env_type: str,
             env_name: str,
-            max_rollouts_per_task: Optional[int] = None,
-            num_tasks: Optional[int] = None,
-            num_train_tasks: Optional[int] = None,
             num_eval_tasks: Optional[int] = None,
-            eval_envs: Optional[int] = None,
-            worst_percentile: Optional[int] = None,
             **kwargs
     ):
         if self.env_type in [

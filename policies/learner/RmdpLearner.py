@@ -19,9 +19,7 @@ class RmdpLearner(Learner):
         sys.path.append("envs/rl-generalization")
         import sunblaze_envs
 
-        assert (
-                num_eval_tasks > 0 and worst_percentile > 0.0 and worst_percentile < 1.0
-        )
+        assert num_eval_tasks > 0 and 0.0 < worst_percentile < 1.0
         self.train_env = sunblaze_envs.make(env_name, **kwargs)  # oracle
         self.train_env.seed(self.seed)
         assert np.all(self.train_env.action_space.low == -1)
