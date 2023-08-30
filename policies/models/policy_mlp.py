@@ -24,16 +24,16 @@ class ModelFreeOffPolicy_MLP(nn.Module):
     Markov_Critic = True
 
     def __init__(
-        self,
-        obs_dim,
-        action_dim,
-        algo_name,
-        dqn_layers,
-        policy_layers,
-        lr=3e-4,
-        gamma=0.99,
-        tau=5e-3,
-        **kwargs
+            self,
+            obs_dim,
+            action_dim,
+            algo_name,
+            dqn_layers,
+            policy_layers,
+            lr=3e-4,
+            gamma=0.99,
+            tau=5e-3,
+            **kwargs
     ):
         super().__init__()
 
@@ -76,7 +76,7 @@ class ModelFreeOffPolicy_MLP(nn.Module):
         )
 
     def update(self, batch):
-        observs, next_observs = batch["obs"], batch["obs2"]  # (B, dim)
+        observations, next_observations = batch["obs"], batch["obs2"]  # (B, dim)
         actions, rewards, dones = batch["act"], batch["rew"], batch["term"]  # (B, dim)
 
         ### 1. Critic loss
@@ -87,12 +87,12 @@ class ModelFreeOffPolicy_MLP(nn.Module):
             actor_target=self.policy_target,
             critic=(self.qf1, self.qf2),
             critic_target=(self.qf1_target, self.qf2_target),
-            observs=observs,
+            observations=observations,
             actions=actions,
             rewards=rewards,
             dones=dones,
             gamma=self.gamma,
-            next_observs=next_observs,
+            next_observations=next_observations,
         )
 
         qf1_loss = F.mse_loss(q1_pred, q_target)  # TD error
@@ -117,7 +117,7 @@ class ModelFreeOffPolicy_MLP(nn.Module):
             actor_target=self.policy_target,
             critic=(self.qf1, self.qf2),
             critic_target=(self.qf1_target, self.qf2_target),
-            observs=observs,
+            observations=observations,
         )
         policy_loss = policy_loss.mean()
 

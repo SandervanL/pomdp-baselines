@@ -205,29 +205,31 @@ class Learner:
             assert self.train_env.action_space.__class__.__name__ == "Discrete"
             self.act_dim = self.train_env.action_space.n
             self.act_continuous = False
-        self.obs_dim = self.train_env.observation_space.shape[0]  # include 1-dim done
+        self.obs_dim: int = self.train_env.observation_space.shape[0]  # include 1-dim done
         logger.log("obs_dim", self.obs_dim, "act_dim", self.act_dim)
 
     def init_agent(
             self,
-            seq_model,
+            seq_model: str,
             separate: bool = True,
             image_encoder=None,
-            reward_clip=False,
+            reward_clip: bool = False,
+            task_embedding_size: Optional[int] = None,
             **kwargs
     ):
+        """ Initialize the agent that is going to be taking actions in the environment."""
         # initialize agent
+        rnn_encoder_type: Optional[str] = None
         if seq_model == "mlp":
             agent_class = AGENT_CLASSES["Policy_MLP"]
-            rnn_encoder_type = None
-            assert separate == True
+            assert separate
         elif "-mlp" in seq_model:
             agent_class = AGENT_CLASSES["Policy_RNN_MLP"]
             rnn_encoder_type = seq_model.split("-")[0]
-            assert separate == True
+            assert separate
         else:
             rnn_encoder_type = seq_model
-            if separate == True:
+            if separate:
                 agent_class = AGENT_CLASSES["Policy_Separate_RNN"]
             else:
                 agent_class = AGENT_CLASSES["Policy_Shared_RNN"]
@@ -247,6 +249,7 @@ class Learner:
             obs_dim=self.obs_dim,
             action_dim=self.act_dim,
             image_encoder_fn=image_encoder_fn,
+            task_embedding_size=task_embedding_size,
             **kwargs,
         ).to(ptu.device)
         logger.log(self.agent)
@@ -266,6 +269,7 @@ class Learner:
             buffer_type=None,
             **kwargs
     ):
+        """ Initializes the buffer."""
 
         if num_updates_per_iter is None:
             num_updates_per_iter = 1.0
@@ -333,7 +337,7 @@ class Learner:
         self.eval_stochastic = eval_stochastic
         self.eval_num_episodes_per_task = num_episodes_per_task
 
-    def _start_training(self):
+    def _reset_train_variables(self):
         self._n_env_steps_total = 0
         self._n_env_steps_total_last = 0
         self._n_rl_update_steps_total = 0
@@ -348,7 +352,7 @@ class Learner:
         training loop
         """
 
-        self._start_training()
+        self._reset_train_variables()
 
         if self.num_init_rollouts_pool > 0:
             logger.log("Collecting initial pool of data..")
@@ -374,7 +378,7 @@ class Learner:
                 )
                 self.log_train_stats(train_stats)
 
-        last_eval_num_iters = 0
+        last_eval_num_iters = current_num_iters = 0
         while self._n_env_steps_total < self.n_env_steps_total:
             # collect data from num_rollouts_per_iter train tasks:
             env_steps = self.collect_rollouts(num_rollouts=self.num_rollouts_per_iter)
@@ -407,7 +411,7 @@ class Learner:
         self.save_model(current_num_iters, perf)
 
     @torch.no_grad()
-    def collect_rollouts(self, num_rollouts, random_actions=False):
+    def collect_rollouts(self, num_rollouts: int, random_actions=False) -> int:
         """collect num_rollouts of trajectories in task and save into policy buffer
         :param random_actions: whether to use policy to sample actions, or randomly sample action space
         """
@@ -461,18 +465,20 @@ class Learner:
                             reward=reward,
                             obs=obs,
                             deterministic=False,
+                            valid_actions=info.get('valid_actions')
                         )
                     else:
                         action, _, _, _ = self.agent.act(obs, deterministic=False)
 
                 # observe reward and next obs (B=1, dim)
-                next_obs, reward, done, info = utl.env_step(
+                next_obs, reward, terminated, truncated, info = utl.env_step(
                     self.train_env, action.squeeze(dim=0)
                 )
                 if self.reward_clip and self.env_type == "atari":
                     reward = torch.tanh(reward)
 
-                done_rollout = False if ptu.get_numpy(done[0][0]) == 0.0 else True
+                done_rollout = ptu.get_numpy(terminated[0][0]) == 1.0 or ptu.get_numpy(
+                    truncated[0][0]) == 1.0
                 # update statistics
                 steps += 1
 
@@ -626,7 +632,7 @@ class Learner:
                         )
 
                     # observe reward and next obs
-                    next_obs, reward, done, info = utl.env_step(
+                    next_obs, reward, terminated, truncated, info = utl.env_step(
                         self.eval_env, action.squeeze(dim=0)
                     )
 
@@ -637,7 +643,8 @@ class Learner:
                         reward = torch.tanh(reward)
 
                     step += 1
-                    done_rollout = False if ptu.get_numpy(done[0][0]) == 0.0 else True
+                    done_rollout = ptu.get_numpy(terminated[0][0]) == 1.0 or ptu.get_numpy(
+                        truncated[0][0]) == 1.0
 
                     if self.env_type == "meta":
                         observations[task_idx, step, :] = ptu.get_numpy(
@@ -658,13 +665,13 @@ class Learner:
                             and self.eval_env.unwrapped.is_success()
                     ):
                         success_rate[task_idx] = 1.0  # ever once reach
-                    elif "success" in info and info["success"] == True:  # keytodoor
+                    elif "success" in info and info["success"]:  # keytodoor
                         success_rate[task_idx] = 1.0
 
                     if done_rollout:
                         # for all env types, same
                         break
-                    if self.env_type == "meta" and info["done_mdp"] == True:
+                    if self.env_type == "meta" and info["done_mdp"]:
                         # for early stopping meta episode like Ant-Dir
                         break
 
@@ -674,19 +681,22 @@ class Learner:
 
     def log_train_stats(self, train_stats):
         logger.record_step(self._n_env_steps_total)
-        ## log losses
-        for k, v in train_stats.items():
-            logger.record_tabular("rl_loss/" + k, v)
-        ## gradient norms
+
+        # Log losses
+        for key, value in train_stats.items():
+            logger.record_tabular("rl_loss/" + key, value)
+
+        # Gradient norms
         if self.agent_arch in [AGENT_ARCHS.Memory, AGENT_ARCHS.Memory_Markov]:
             results = self.agent.report_grad_norm()
-            for k, v in results.items():
-                logger.record_tabular("rl_loss/" + k, v)
+            for key, value in results.items():
+                logger.record_tabular("rl_loss/" + key, value)
+
         logger.dump_tabular()
 
     def log(self):
         # --- log training  ---
-        ## set env steps for tensorboard: z is for lowest order
+        # Set env steps for tensorboard: z is for lowest order
         logger.record_step(self._n_env_steps_total)
         logger.record_tabular("z/env_steps", self._n_env_steps_total)
         logger.record_tabular("z/rollouts", self._n_rollouts_total)

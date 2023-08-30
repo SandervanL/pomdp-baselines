@@ -1,140 +1,65 @@
+from typing import Optional, Tuple, Any
+
+import numpy as np
 import torch
-import torch.nn as nn
+from torch import Tensor
 from torch.nn import functional as F
+
+from policies.models.BaseActorCritic import BaseActorCritic
+from policies.models.actor import MarkovPolicyBase
 from utils import helpers as utl
 from torchkit.constant import *
 import torchkit.pytorch_utils as ptu
 
 
-class Actor_RNN(nn.Module):
+class ActorRnn(BaseActorCritic):
     def __init__(
-        self,
-        obs_dim,
-        action_dim,
-        encoder,
-        algo,
-        action_embedding_size,
-        observ_embedding_size,
-        reward_embedding_size,
-        rnn_hidden_size,
-        policy_layers,
-        rnn_num_layers,
-        image_encoder=None,
-        **kwargs
+            self,
+            policy_layers: list[int],
+            observ_embedding_size: int,
+            **kwargs
     ):
-        super().__init__()
-
-        self.obs_dim = obs_dim
-        self.action_dim = action_dim
-        self.algo = algo
-
-        ### Build Model
-        ## 1. embed action, state, reward (Feed-forward layers first)
-
-        self.image_encoder = image_encoder
-        if self.image_encoder is None:
-            self.observ_embedder = utl.FeatureExtractor(
-                obs_dim, observ_embedding_size, F.relu
-            )
-        else:  # for pixel observation, use external encoder
-            assert observ_embedding_size == 0
-            observ_embedding_size = self.image_encoder.embed_size  # reset it
-
-        self.action_embedder = utl.FeatureExtractor(
-            action_dim, action_embedding_size, F.relu
-        )
-        self.reward_embedder = utl.FeatureExtractor(1, reward_embedding_size, F.relu)
-
-        ## 2. build RNN model
-        rnn_input_size = (
-            action_embedding_size + observ_embedding_size + reward_embedding_size
-        )
-        self.rnn_hidden_size = rnn_hidden_size
-
-        assert encoder in RNNs
-        self.encoder = encoder
-        self.num_layers = rnn_num_layers
-
-        self.rnn = RNNs[encoder](
-            input_size=rnn_input_size,
-            hidden_size=self.rnn_hidden_size,
-            num_layers=self.num_layers,
-            batch_first=False,
-            bias=True,
-        )
-        # never add activation after GRU cell, cuz the last operation of GRU is tanh
-
-        # default gru initialization is uniform, not recommended
-        # https://smerity.com/articles/2016/orthogonal_init.html orthogonal has eigenvalue = 1
-        # to prevent grad explosion or vanishing
-        for name, param in self.rnn.named_parameters():
-            if "bias" in name:
-                nn.init.constant_(param, 0)
-            elif "weight" in name:
-                nn.init.orthogonal_(param)
+        super().__init__(observ_embedding_size=observ_embedding_size, **kwargs)
 
         ## 3. build another obs branch
         if self.image_encoder is None:
             self.current_observ_embedder = utl.FeatureExtractor(
-                obs_dim, observ_embedding_size, F.relu
+                self.obs_dim, observ_embedding_size, F.relu
             )
 
         ## 4. build policy
-        self.policy = self.algo.build_actor(
+        self.policy: MarkovPolicyBase = self.algo.build_actor(
             input_size=self.rnn_hidden_size + observ_embedding_size,
             action_dim=self.action_dim,
             hidden_sizes=policy_layers,
         )
 
-    def _get_obs_embedding(self, observs):
+    def _get_shortcut_obs_embedding(self, observations: Tensor) -> Tensor:
         if self.image_encoder is None:  # vector obs
-            return self.observ_embedder(observs)
+            return self.current_observ_embedder(observations)
         else:  # pixel obs
-            return self.image_encoder(observs)
+            return self.image_encoder(observations)
 
-    def _get_shortcut_obs_embedding(self, observs):
-        if self.image_encoder is None:  # vector obs
-            return self.current_observ_embedder(observs)
-        else:  # pixel obs
-            return self.image_encoder(observs)
-
-    def get_hidden_states(
-        self, prev_actions, rewards, observs, initial_internal_state=None
-    ):
-        # all the input have the shape of (1 or T+1, B, *)
-        # get embedding of initial transition
-        input_a = self.action_embedder(prev_actions)
-        input_r = self.reward_embedder(rewards)
-        input_s = self._get_obs_embedding(observs)
-        inputs = torch.cat((input_a, input_r, input_s), dim=-1)
-
-        # feed into RNN: output (T+1, B, hidden_size)
-        if initial_internal_state is None:  # initial_internal_state is zeros
-            output, _ = self.rnn(inputs)
-            return output
-        else:  # useful for one-step rollout
-            output, current_internal_state = self.rnn(inputs, initial_internal_state)
-            return output, current_internal_state
-
-    def forward(self, prev_actions, rewards, observs):
+    def forward(self, prev_actions: Tensor, rewards: Tensor, observations: Tensor) -> tuple[
+        Tensor, Tensor]:
         """
-        For prev_actions a, rewards r, observs o: (T+1, B, dim)
+        For prev_actions a, rewards r, observations o: (T+1, B, dim)
                 a[t] -> r[t], o[t]
 
-        return current actions a' (T+1, B, dim) based on previous history
+        :returncurrent actions a' (T+1, B, dim) based on previous history
 
         """
-        assert prev_actions.dim() == rewards.dim() == observs.dim() == 3
-        assert prev_actions.shape[0] == rewards.shape[0] == observs.shape[0]
+        assert prev_actions.dim() == rewards.dim() == observations.dim() == 3
+        assert prev_actions.shape[0] == rewards.shape[0] == observations.shape[0]
 
         ### 1. get hidden/belief states of the whole/sub trajectories, aligned with states
         # return the hidden states (T+1, B, dim)
-        hidden_states = self.get_hidden_states(
-            prev_actions=prev_actions, rewards=rewards, observs=observs
+        hidden_states, _ = self.get_hidden_states(
+            prev_actions=prev_actions, rewards=rewards, observations=observations
         )
 
         # 2. another branch for current obs
-        curr_embed = self._get_shortcut_obs_embedding(observs)  # (T+1, B, dim)
+        curr_embed = self._get_shortcut_obs_embedding(observations)  # (T+1, B, dim)
 
         # 3. joint embed
         joint_embeds = torch.cat((hidden_states, curr_embed), dim=-1)  # (T+1, B, dim)
@@ -142,8 +67,18 @@ class Actor_RNN(nn.Module):
         # 4. Actor
         return self.algo.forward_actor(actor=self.policy, observ=joint_embeds)
 
-    @torch.no_grad()
-    def get_initial_info(self):
+    # TODO perhaps enable again? I need grad for the task embedder @torch.no_grad()
+    def get_initial_info(self, env_embedding: Optional[Tensor] = None, embedding_init: int = 0) -> \
+            tuple[Tensor, Tensor, tuple[Tensor]]:
+        """
+        Initialize the initial internal state of the RNN.
+        :param env_embedding: (1, B, internal_state_dim)
+        :param embedding_init: 0 for zero initialization,
+                               1 for hidden state initialization,
+                               2 for cell_state initialization,
+                               3 for both
+        """
+        assert (env_embedding is None and embedding_init == 0) or env_embedding is not None
         # here we assume batch_size = 1
 
         ## here we set the ndim = 2 for action and reward for compatibility
@@ -155,21 +90,43 @@ class Actor_RNN(nn.Module):
             internal_state = hidden_state
         else:
             cell_state = ptu.zeros((self.num_layers, 1, self.rnn_hidden_size)).float()
+            if env_embedding is not None:
+                if embedding_init | 1 > 0:
+                    hidden_state = self.task_embedder(env_embedding)
+                if embedding_init | 2 > 0:
+                    cell_state = self.task_embedder(env_embedding)
             internal_state = (hidden_state, cell_state)
 
         return prev_action, reward, internal_state
 
     @torch.no_grad()
     def act(
-        self,
-        prev_internal_state,
-        prev_action,
-        reward,
-        obs,
-        deterministic=False,
-        return_log_prob=False,
-        valid_actions=None
-    ):
+            self,
+            prev_internal_state: Tensor,
+            prev_action: Tensor,
+            reward: Tensor,
+            obs: Tensor,
+            deterministic: bool = False,
+            return_log_prob: bool = False,
+            valid_actions: Optional[np.ndarray] = None
+    ) -> tuple[tuple[Tensor, Tensor, Tensor, Any], Optional[Tensor]]:
+        """
+        Select an action based on the previous action, internal state, and reward, and 
+        current observation.
+        Args:
+            prev_internal_state: the previous internal state of the RNN.
+            prev_action: the action that was taken one step ago.
+            reward: the reward that was received in the previous step.
+            obs: The newest observation.
+            deterministic: whether to choose a discrete action or sample a continuous action.
+            return_log_prob: whether to return the log probability of the action.
+            valid_actions: an array for each action whether it is valid to take (1) or not (0).
+
+        Returns:
+            action_tuple: a tuple of the action, the probability of the action, and the log
+                probability of the action.
+            current_internal_state: the current internal state of the RNN.
+        """""
         # for evaluation (not training), so no target actor, and T = 1
         # a function that generates action, works like a pytorch module
 
@@ -181,7 +138,7 @@ class Actor_RNN(nn.Module):
         hidden_state, current_internal_state = self.get_hidden_states(
             prev_actions=prev_action,
             rewards=reward,
-            observs=obs,
+            observations=obs,
             initial_internal_state=prev_internal_state,
         )
         # 2. another branch for current obs

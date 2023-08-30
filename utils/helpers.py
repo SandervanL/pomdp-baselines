@@ -1,12 +1,18 @@
 import random
 import warnings
+from typing import SupportsFloat, Any
+
 import numpy as np
 import pickle
 import os
 
 import torch
 import torch.nn as nn
+from gymnasium.core import ActType, ObsType
+from torch import Tensor
+
 import torchkit.pytorch_utils as ptu
+import gymnasium as gym
 from gymnasium.spaces import Box, Discrete, Tuple
 from itertools import product
 
@@ -41,24 +47,25 @@ def get_dim(space):
         raise NotImplementedError
 
 
-def env_step(env, action):
+def env_step(env: gym.Env, action: ActType) -> tuple[
+    Tensor, Tensor, Tensor, Tensor, dict[str, Any]]:
     # action: (A)
     # return: all 2D tensor shape (B=1, dim)
     action = ptu.get_numpy(action)
     if env.action_space.__class__.__name__ == "Discrete":
         action = np.argmax(action)  # one-hot to int
     next_obs, reward, terminated, truncated, info = env.step(action)
-    done = terminated or truncated
 
     # move to torch
     next_obs = ptu.from_numpy(next_obs).view(-1, next_obs.shape[0])
     reward = ptu.FloatTensor([reward]).view(-1, 1)
-    done = ptu.from_numpy(np.array(done, dtype=int)).view(-1, 1)
+    terminated = ptu.from_numpy(np.array(terminated, dtype=int)).view(-1, 1)
+    truncated = ptu.from_numpy(np.array(truncated, dtype=int)).view(-1, 1)
 
-    return next_obs, reward, done, info
+    return next_obs, reward, terminated, truncated, info
 
 
-def unpack_batch(batch):
+def unpack_batch(batch: dict[str, Tensor]):
     """unpack a batch and return individual elements
     - corresponds to replay_buffer object
     and add 1 dim at first dim to be concated

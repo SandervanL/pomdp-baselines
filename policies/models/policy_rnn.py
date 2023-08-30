@@ -6,18 +6,22 @@ which has another branch to encode current state (and action)
 Hidden state update functions get_hidden_state() is inspired by varibad encoder 
 https://github.com/lmzintgraf/varibad/blob/master/models/encoder.py
 """
+from typing import Optional
 
+import numpy as np
 import torch
 from copy import deepcopy
 import torch.nn as nn
+from torch import Tensor
 from torch.nn import functional as F
 from torch.optim import Adam
+
+from policies.rl.base import RLAlgorithmBase
 from utils import helpers as utl
 from policies.rl import RL_ALGORITHMS
 import torchkit.pytorch_utils as ptu
 from policies.models.recurrent_critic import Critic_RNN
-from policies.models.recurrent_actor import Actor_RNN
-from utils import logger
+from policies.models.recurrent_actor import ActorRnn
 
 
 class ModelFreeOffPolicy_Separate_RNN(nn.Module):
@@ -30,34 +34,35 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
     Markov_Critic = False
 
     def __init__(
-        self,
-        obs_dim,
-        action_dim,
-        encoder,
-        algo_name,
-        action_embedding_size,
-        observ_embedding_size,
-        reward_embedding_size,
-        rnn_hidden_size,
-        dqn_layers,
-        policy_layers,
-        rnn_num_layers=1,
-        lr=3e-4,
-        gamma=0.99,
-        tau=5e-3,
-        # pixel obs
-        image_encoder_fn=lambda: None,
-        **kwargs
+            self,
+            obs_dim: int,
+            action_dim: int,
+            encoder,
+            algo_name: str,
+            action_embedding_size: int,
+            observ_embedding_size: int,
+            reward_embedding_size: int,
+            task_embedding_size: Optional[int],
+            rnn_hidden_size: int,
+            dqn_layers: int,
+            policy_layers: list[int],
+            rnn_num_layers: int = 1,
+            lr: float = 3e-4,
+            gamma: float = 0.99,
+            tau: float = 5e-3,
+            # pixel obs
+            image_encoder_fn=lambda: None,
+            **kwargs
     ):
         super().__init__()
 
-        self.obs_dim = obs_dim
-        self.action_dim = action_dim
-        self.gamma = gamma
-        self.tau = tau
+        self.obs_dim: int = obs_dim
+        self.action_dim: int = action_dim
+        self.gamma: float = gamma
+        self.tau: float = tau
 
-        self.algo = RL_ALGORITHMS[algo_name](**(kwargs[algo_name] if algo_name in kwargs else {}),
-                                             action_dim=action_dim)
+        algo_kwargs = kwargs[algo_name] if algo_name in kwargs else {}
+        self.algo: RLAlgorithmBase = RL_ALGORITHMS[algo_name](**algo_kwargs, action_dim=action_dim)
 
         # Critics
         self.critic = Critic_RNN(
@@ -78,7 +83,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.critic_target = deepcopy(self.critic)
 
         # Actor
-        self.actor = Actor_RNN(
+        self.actor = ActorRnn(
             obs_dim,
             action_dim,
             encoder,
@@ -86,6 +91,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             action_embedding_size,
             observ_embedding_size,
             reward_embedding_size,
+            task_embedding_size,
             rnn_hidden_size,
             policy_layers,
             rnn_num_layers,
@@ -93,7 +99,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         )
         self.actor_optimizer = Adam(self.actor.parameters(), lr=lr)
         # target networks
-        self.actor_target = deepcopy(self.actor)
+        self.actor_target: ActorRnn = deepcopy(self.actor)
 
     @torch.no_grad()
     def get_initial_info(self):
@@ -101,14 +107,14 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
     @torch.no_grad()
     def act(
-        self,
-        prev_internal_state,
-        prev_action,
-        reward,
-        obs,
-        deterministic=False,
-        return_log_prob=False,
-        valid_actions=None,
+            self,
+            prev_internal_state: Tensor,
+            prev_action: Tensor,
+            reward: Tensor,
+            obs: Tensor,
+            deterministic: bool = False,
+            return_log_prob: bool = False,
+            valid_actions: Optional[np.ndarray] = None,
     ):
         prev_action = prev_action.unsqueeze(0)  # (1, B, dim)
         reward = reward.unsqueeze(0)  # (1, B, 1)
@@ -126,9 +132,10 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         return current_action_tuple, current_internal_state
 
-    def forward(self, actions, rewards, observs, dones, masks):
+    def forward(self, actions: Tensor, rewards: Tensor, observations: Tensor, dones: Tensor,
+                masks: Tensor) -> dict[str, float]:
         """
-        For actions a, rewards r, observs o, dones d: (T+1, B, dim)
+        For actions a, rewards r, observations o, dones d: (T+1, B, dim)
                 where for each t in [0, T], take action a[t], then receive reward r[t], done d[t], and next obs o[t]
                 the hidden state h[t](, c[t]) = RNN(h[t-1](, c[t-1]), a[t], r[t], o[t])
                 specially, a[0]=r[0]=d[0]=h[0]=c[0]=0.0, o[0] is the initial obs
@@ -137,19 +144,19 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
                 based on Masks (T, B, 1)
         """
         assert (
-            actions.dim()
-            == rewards.dim()
-            == dones.dim()
-            == observs.dim()
-            == masks.dim()
-            == 3
+                actions.dim()
+                == rewards.dim()
+                == dones.dim()
+                == observations.dim()
+                == masks.dim()
+                == 3
         )
         assert (
-            actions.shape[0]
-            == rewards.shape[0]
-            == dones.shape[0]
-            == observs.shape[0]
-            == masks.shape[0] + 1
+                actions.shape[0]
+                == rewards.shape[0]
+                == dones.shape[0]
+                == observations.shape[0]
+                == masks.shape[0] + 1
         )
         num_valid = torch.clamp(masks.sum(), min=1.0)  # as denominator of loss
 
@@ -161,7 +168,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             actor_target=self.actor_target,
             critic=self.critic,
             critic_target=self.critic_target,
-            observs=observs,
+            observations=observations,
             actions=actions,
             rewards=rewards,
             dones=dones,
@@ -188,7 +195,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             actor_target=self.actor_target,
             critic=self.critic,
             critic_target=self.critic_target,
-            observs=observs,
+            observations=observations,
             actions=actions,
             rewards=rewards,
         )
@@ -247,8 +254,8 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         masks = batch["mask"]
         obs, next_obs = batch["obs"], batch["obs2"]  # (T, B, dim)
 
-        # extend observs, actions, rewards, dones from len = T to len = T+1
-        observs = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
+        # extend observations, actions, rewards, dones from len = T to len = T+1
+        observations = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
         actions = torch.cat(
             (ptu.zeros((1, batch_size, self.action_dim)).float(), actions), dim=0
         )  # (T+1, B, dim)
@@ -259,4 +266,4 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             (ptu.zeros((1, batch_size, 1)).float(), dones), dim=0
         )  # (T+1, B, dim)
 
-        return self.forward(actions, rewards, observs, dones, masks)
+        return self.forward(actions, rewards, observations, dones, masks)

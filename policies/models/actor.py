@@ -185,7 +185,7 @@ class CategoricalPolicy(MarkovPolicyBase):
             deterministic: bool = False,
             return_log_prob: bool = False,
             valid_actions: Optional[np.ndarray] = None,
-    ):
+    ) -> tuple[Tensor, Tensor, Optional[Tensor]]:
         """
         :param obs: Observation, usually 2D (B, dim), but maybe 3D (T, B, dim)
         :param deterministic: If True, do not sample

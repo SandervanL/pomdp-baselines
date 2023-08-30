@@ -21,21 +21,21 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
     ARCH = "memory"
 
     def __init__(
-        self,
-        obs_dim,
-        action_dim,
-        encoder,
-        algo_name,
-        action_embedding_size,
-        observ_embedding_size,
-        reward_embedding_size,
-        rnn_hidden_size,
-        dqn_layers,
-        policy_layers,
-        lr=3e-4,
-        gamma=0.99,
-        tau=5e-3,
-        **kwargs
+            self,
+            obs_dim,
+            action_dim,
+            encoder,
+            algo_name,
+            action_embedding_size,
+            observ_embedding_size,
+            reward_embedding_size,
+            rnn_hidden_size,
+            dqn_layers,
+            policy_layers,
+            lr=3e-4,
+            gamma=0.99,
+            tau=5e-3,
+            **kwargs
     ):
         super().__init__()
 
@@ -58,7 +58,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
 
         ## 2. build RNN model
         rnn_input_size = (
-            action_embedding_size + observ_embedding_size + reward_embedding_size
+                action_embedding_size + observ_embedding_size + reward_embedding_size
         )
         self.rnn_hidden_size = rnn_hidden_size
 
@@ -128,13 +128,13 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
         )
 
     def get_hidden_states(
-        self, prev_actions, rewards, observs, initial_internal_state=None
+            self, prev_actions, rewards, observations, initial_internal_state=None
     ):
         # all the input have the shape of (T+1, B, *)
         # get embedding of initial transition
         input_a = self.action_embedder(prev_actions)
         input_r = self.reward_embedder(rewards)
-        input_s = self.observ_embedder(observs)
+        input_s = self.observ_embedder(observations)
         inputs = torch.cat((input_a, input_r, input_s), dim=-1)
 
         # feed into RNN: output (T+1, B, hidden_size)
@@ -145,9 +145,9 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
             output, current_internal_state = self.rnn(inputs, initial_internal_state)
             return output, current_internal_state
 
-    def forward(self, actions, rewards, observs, dones, masks):
+    def forward(self, actions, rewards, observations, dones, masks):
         """
-        For actions a, rewards r, observs o, dones d: (T+1, B, dim)
+        For actions a, rewards r, observations o, dones d: (T+1, B, dim)
                 where for each t in [0, T], take action a[t], then receive reward r[t], done d[t], and next obs o[t]
                 the hidden state h[t](, c[t]) = RNN(h[t-1](, c[t-1]), a[t], r[t], o[t])
                 specially, a[0]=r[0]=d[0]=h[0]=c[0]=0.0, o[0] is the initial obs
@@ -156,29 +156,29 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
                 based on Masks (T, B, 1)
         """
         assert (
-            actions.dim()
-            == rewards.dim()
-            == dones.dim()
-            == observs.dim()
-            == masks.dim()
-            == 3
+                actions.dim()
+                == rewards.dim()
+                == dones.dim()
+                == observations.dim()
+                == masks.dim()
+                == 3
         )
         assert (
-            actions.shape[0]
-            == rewards.shape[0]
-            == dones.shape[0]
-            == observs.shape[0]
-            == masks.shape[0] + 1
+                actions.shape[0]
+                == rewards.shape[0]
+                == dones.shape[0]
+                == observations.shape[0]
+                == masks.shape[0] + 1
         )
         num_valid = torch.clamp(masks.sum(), min=1.0)  # as denominator of loss
 
-        ### 1. get hidden/belief states of the whole/sub trajectories, aligned with observs
+        ### 1. get hidden/belief states of the whole/sub trajectories, aligned with observations
         # return the hidden states (T+1, B, dim)
         hidden_states = self.get_hidden_states(
-            prev_actions=actions, rewards=rewards, observs=observs
+            prev_actions=actions, rewards=rewards, observations=observations
         )
 
-        obs_embeds = self.current_observ_embedder(observs)  # (T+1, B, dim)
+        obs_embeds = self.current_observ_embedder(observations)  # (T+1, B, dim)
         joint_policy_embeds = torch.cat(
             (hidden_states, obs_embeds), dim=-1
         )  # (T+1, B, dim)
@@ -196,7 +196,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
             )
 
             obs_act_embeds = self.current_observ_action_embedder(
-                torch.cat((observs, new_next_actions), dim=-1)
+                torch.cat((observations, new_next_actions), dim=-1)
             )  # (T+1, B, dim)
             joint_q_embeds = torch.cat(
                 (hidden_states, obs_act_embeds), dim=-1
@@ -215,7 +215,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
         # Q(h(t), a(t)) (T, B, 1)
         # current_actions does NOT include last obs's action
         curr_obs_act_embeds = self.current_observ_action_embedder(
-            torch.cat((observs[:-1], actions[1:]), dim=-1)
+            torch.cat((observations[:-1], actions[1:]), dim=-1)
         )  # (T, B, dim)
         # 3. joint embeds
         curr_joint_q_embeds = torch.cat(
@@ -242,7 +242,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
         )
 
         new_obs_act_embeds = self.current_observ_action_embedder(
-            torch.cat((observs, new_actions), dim=-1)
+            torch.cat((observations, new_actions), dim=-1)
         )  # (T+1, B, dim)
         new_joint_q_embeds = torch.cat(
             (hidden_states, new_obs_act_embeds), dim=-1
@@ -306,8 +306,8 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
         masks = batch["mask"]
         obs, next_obs = batch["obs"], batch["obs2"]  # (T, B, dim)
 
-        # extend observs, actions, rewards, dones from len = T to len = T+1
-        observs = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
+        # extend observations, actions, rewards, dones from len = T to len = T+1
+        observations = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
         actions = torch.cat(
             (ptu.zeros((1, batch_size, self.action_dim)).float(), actions), dim=0
         )  # (T+1, B, dim)
@@ -318,7 +318,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
             (ptu.zeros((1, batch_size, 1)).float(), dones), dim=0
         )  # (T+1, B, dim)
 
-        return self.forward(actions, rewards, observs, dones, masks)
+        return self.forward(actions, rewards, observations, dones, masks)
 
     @torch.no_grad()
     def get_initial_info(self):
@@ -339,13 +339,13 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
 
     @torch.no_grad()
     def act(
-        self,
-        prev_internal_state,
-        prev_action,
-        reward,
-        obs,
-        deterministic=False,
-        return_log_prob=False,
+            self,
+            prev_internal_state,
+            prev_action,
+            reward,
+            obs,
+            deterministic=False,
+            return_log_prob=False,
     ):
         # for evaluation (not training), so no target actor, and T = 1
         # a function that generates action, works like a pytorch module
@@ -361,7 +361,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
         hidden_state, current_internal_state = self.get_hidden_states(
             prev_actions=prev_action,
             rewards=reward,
-            observs=obs,
+            observations=obs,
             initial_internal_state=prev_internal_state,
         )
         # 2. another branch for current obs

@@ -1,6 +1,7 @@
 import torch
 from copy import deepcopy
 import torch.nn as nn
+from gymnasium.core import ObsType
 from torch.optim import Adam
 from utils import helpers as utl
 from policies.models import *
@@ -21,24 +22,24 @@ class ModelFreeOffPolicy_RNN_MLP(ModelFreeOffPolicy_Separate_RNN):
     Markov_Critic = False
 
     def __init__(
-        self,
-        obs_dim,
-        action_dim,
-        encoder,
-        algo_name,
-        action_embedding_size,
-        observ_embedding_size,
-        reward_embedding_size,
-        rnn_hidden_size,
-        dqn_layers,
-        policy_layers,
-        rnn_num_layers=1,
-        lr=3e-4,
-        gamma=0.99,
-        tau=5e-3,
-        # pixel obs
-        image_encoder_fn=lambda: None,
-        **kwargs
+            self,
+            obs_dim,
+            action_dim,
+            encoder,
+            algo_name,
+            action_embedding_size,
+            observ_embedding_size,
+            reward_embedding_size,
+            rnn_hidden_size,
+            dqn_layers,
+            policy_layers,
+            rnn_num_layers=1,
+            lr=3e-4,
+            gamma=0.99,
+            tau=5e-3,
+            # pixel obs
+            image_encoder_fn=lambda: None,
+            **kwargs
     ):
         super().__init__(
             obs_dim,
@@ -72,11 +73,11 @@ class ModelFreeOffPolicy_RNN_MLP(ModelFreeOffPolicy_Separate_RNN):
 
     @torch.no_grad()
     def act(
-        self,
-        obs,
-        deterministic=False,
-        return_log_prob=False,
-        valid_actions=None,
+            self,
+            obs: ObsType,
+            deterministic=False,
+            return_log_prob=False,
+            valid_actions=None,
     ):
         return self.algo.select_action(
             actor=self.actor,

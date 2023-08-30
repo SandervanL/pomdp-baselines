@@ -13,12 +13,12 @@ class SAC(RLAlgorithmBase):
     use_target_actor = False
 
     def __init__(
-        self,
-        entropy_alpha=0.1,
-        automatic_entropy_tuning=True,
-        target_entropy=None,
-        alpha_lr=3e-4,
-        action_dim=None,
+            self,
+            entropy_alpha=0.1,
+            automatic_entropy_tuning=True,
+            target_entropy=None,
+            alpha_lr=3e-4,
+            action_dim=None,
     ):
 
         self.automatic_entropy_tuning = automatic_entropy_tuning
@@ -38,7 +38,7 @@ class SAC(RLAlgorithmBase):
     def update_others(self, current_log_probs):
         if self.automatic_entropy_tuning:
             alpha_entropy_loss = -self.log_alpha_entropy.exp() * (
-                current_log_probs + self.target_entropy
+                    current_log_probs + self.target_entropy
             )
 
             self.alpha_entropy_optim.zero_grad()
@@ -78,43 +78,43 @@ class SAC(RLAlgorithmBase):
         return new_actions, log_probs  # (T+1, B, dim), (T+1, B, 1)
 
     def critic_loss(
-        self,
-        markov_actor: bool,
-        markov_critic: bool,
-        actor,
-        actor_target,
-        critic,
-        critic_target,
-        observs,
-        actions,
-        rewards,
-        dones,
-        gamma,
-        next_observs=None,  # used in markov_critic
+            self,
+            markov_actor: bool,
+            markov_critic: bool,
+            actor,
+            actor_target,
+            critic,
+            critic_target,
+            observations,
+            actions,
+            rewards,
+            dones,
+            gamma,
+            next_observations=None,  # used in markov_critic
     ):
         # Q^tar(h(t+1), pi(h(t+1))) + H[pi(h(t+1))]
         with torch.no_grad():
             # first next_actions from current policy,
             if markov_actor:
                 new_actions, new_log_probs = self.forward_actor(
-                    actor, next_observs if markov_critic else observs
+                    actor, next_observations if markov_critic else observations
                 )
             else:
                 # (T+1, B, dim) including reaction to last obs
                 new_actions, new_log_probs = actor(
                     prev_actions=actions,
                     rewards=rewards,
-                    observs=next_observs if markov_critic else observs,
+                    observations=next_observations if markov_critic else observations,
                 )
 
             if markov_critic:  # (B, 1)
-                next_q1 = critic_target[0](next_observs, new_actions)
-                next_q2 = critic_target[1](next_observs, new_actions)
+                next_q1 = critic_target[0](next_observations, new_actions)
+                next_q2 = critic_target[1](next_observations, new_actions)
             else:
                 next_q1, next_q2 = critic_target(
                     prev_actions=actions,
                     rewards=rewards,
-                    observs=observs,
+                    observations=observations,
                     current_actions=new_actions,
                 )  # (T+1, B, 1)
 
@@ -127,46 +127,46 @@ class SAC(RLAlgorithmBase):
                 q_target = q_target[1:]  # (T, B, 1)
 
         if markov_critic:
-            q1_pred = critic[0](observs, actions)
-            q2_pred = critic[1](observs, actions)
+            q1_pred = critic[0](observations, actions)
+            q2_pred = critic[1](observations, actions)
         else:
             # Q(h(t), a(t)) (T, B, 1)
             q1_pred, q2_pred = critic(
                 prev_actions=actions,
                 rewards=rewards,
-                observs=observs,
+                observations=observations,
                 current_actions=actions[1:],
             )  # (T, B, 1)
 
         return (q1_pred, q2_pred), q_target
 
     def actor_loss(
-        self,
-        markov_actor: bool,
-        markov_critic: bool,
-        actor,
-        actor_target,
-        critic,
-        critic_target,
-        observs,
-        actions=None,
-        rewards=None,
+            self,
+            markov_actor: bool,
+            markov_critic: bool,
+            actor,
+            actor_target,
+            critic,
+            critic_target,
+            observations,
+            actions=None,
+            rewards=None,
     ):
         if markov_actor:
-            new_actions, log_probs = self.forward_actor(actor, observs)
+            new_actions, log_probs = self.forward_actor(actor, observations)
         else:
             new_actions, log_probs = actor(
-                prev_actions=actions, rewards=rewards, observs=observs
+                prev_actions=actions, rewards=rewards, observations=observations
             )  # (T+1, B, A)
 
         if markov_critic:
-            q1 = critic[0](observs, new_actions)
-            q2 = critic[1](observs, new_actions)
+            q1 = critic[0](observations, new_actions)
+            q2 = critic[1](observations, new_actions)
         else:
             q1, q2 = critic(
                 prev_actions=actions,
                 rewards=rewards,
-                observs=observs,
+                observations=observations,
                 current_actions=new_actions,
             )  # (T+1, B, 1)
         min_q_new_actions = torch.min(q1, q2)  # (T+1,B,1)
