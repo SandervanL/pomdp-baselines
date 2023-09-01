@@ -21,7 +21,7 @@ class AntDirEnv(MultitaskAntEnv):
             **kwargs
     ):
         self.forward_backward = forward_backward
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
 
         super(AntDirEnv, self).__init__(task, n_tasks, **kwargs)
 

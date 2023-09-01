@@ -20,7 +20,7 @@ from policies.rl.base import RLAlgorithmBase
 from utils import helpers as utl
 from policies.rl import RL_ALGORITHMS
 import torchkit.pytorch_utils as ptu
-from policies.models.recurrent_critic import Critic_RNN
+from policies.models.recurrent_critic import CriticRnn
 from policies.models.recurrent_actor import ActorRnn
 
 
@@ -57,7 +57,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.algo: RLAlgorithmBase = RL_ALGORITHMS[algo_name](**algo_kwargs, action_dim=action_dim)
 
         # Critics
-        self.critic = Critic_RNN(
+        self.critic = CriticRnn(
             obs_dim=obs_dim,
             action_dim=action_dim,
             algo=self.algo,
@@ -83,8 +83,8 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.actor_target: ActorRnn = deepcopy(self.actor)
 
     @torch.no_grad()
-    def get_initial_info(self):
-        return self.actor.get_initial_info()
+    def get_initial_info(self, *args, **kwargs) -> tuple[Tensor, Tensor, tuple[Tensor]]:
+        return self.actor.get_initial_info(*args, **kwargs)
 
     @torch.no_grad()
     def act(
@@ -114,7 +114,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         return current_action_tuple, current_internal_state
 
     def forward(self, actions: Tensor, rewards: Tensor, observations: Tensor, dones: Tensor,
-                masks: Tensor) -> dict[str, float]:
+                masks: Tensor, task_embeddings: Optional[Tensor] = None) -> dict[str, float]:
         """
         For actions a, rewards r, observations o, dones d: (T+1, B, dim)
                 where for each t in [0, T], take action a[t], then receive reward r[t], done d[t], and next obs o[t]
@@ -130,6 +130,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
                 == dones.dim()
                 == observations.dim()
                 == masks.dim()
+                == (3 if task_embeddings is None else task_embeddings.dim())
                 == 3
         )
         assert (
@@ -137,6 +138,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
                 == rewards.shape[0]
                 == dones.shape[0]
                 == observations.shape[0]
+                == (dones.shape[0] if task_embeddings is None else task_embeddings.shape[0])
                 == masks.shape[0] + 1
         )
         num_valid = torch.clamp(masks.sum(), min=1.0)  # as denominator of loss
@@ -153,6 +155,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             actions=actions,
             rewards=rewards,
             dones=dones,
+            task_embeddings=task_embeddings,
             gamma=self.gamma,
         )
 
@@ -179,6 +182,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             observations=observations,
             actions=actions,
             rewards=rewards,
+            task_embeddings=task_embeddings,
         )
         # masked policy_loss
         policy_loss = (policy_loss * masks).sum() / num_valid
@@ -222,7 +226,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             "pi_rnn_grad_norm": utl.get_grad_norm(self.actor.rnn),
         }
 
-    def update(self, batch):
+    def update(self, batch: dict[str, Tensor]) -> dict[str, float]:
         # all are 3D tensor (T,B,dim)
         actions, rewards, dones = batch["act"], batch["rew"], batch["term"]
         _, batch_size, _ = actions.shape
@@ -234,6 +238,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         masks = batch["mask"]
         obs, next_obs = batch["obs"], batch["obs2"]  # (T, B, dim)
+        tasks = batch["task"] if "task" in batch else None  # (T, B, dim)
 
         # extend observations, actions, rewards, dones from len = T to len = T+1
         observations = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
@@ -246,5 +251,6 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         dones = torch.cat(
             (ptu.zeros((1, batch_size, 1)).float(), dones), dim=0
         )  # (T+1, B, dim)
+        tasks = torch.cat((tasks[0, :, :].unsqueeze(0), tasks))  # (T+1, B, dim)
 
-        return self.forward(actions, rewards, observations, dones, masks)
+        return self.forward(actions, rewards, observations, dones, masks, tasks)

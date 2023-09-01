@@ -48,6 +48,7 @@ class MazeEnv(BaseEnv):
             the observation, the reward, whether the episode is done, and additional information.
             See gym.env.step for more information.
         """
+
         if isinstance(action, (np.ndarray, Tensor)):
             action = action.item()
 
@@ -61,7 +62,7 @@ class MazeEnv(BaseEnv):
         next_state = self.maze.to_value()
         info = {'valid_actions': self._get_valid_actions()}
 
-        if self._is_goal(new_position):
+        if self.is_goal_state():
             reward = +100
             info['success'] = done = True
         elif not valid:
@@ -71,6 +72,7 @@ class MazeEnv(BaseEnv):
             reward = -0.01
             done = False
 
+        info['original_state'] = next_state
         return next_state.flatten(), reward, done, False, info
 
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
@@ -87,7 +89,10 @@ class MazeEnv(BaseEnv):
         self.maze.objects.agent.positions = self.start_position
         self.maze.objects.goal.positions = self.goal_positions
         next_state = self.maze.to_value()
-        return next_state.flatten(), {'valid_actions': self._get_valid_actions()}
+        return next_state.flatten(), {
+            'valid_actions': self._get_valid_actions(),
+            'original_state': next_state
+        }
 
     def _is_valid(self, position: Position) -> bool:
         """
@@ -118,7 +123,7 @@ class MazeEnv(BaseEnv):
 
         return valid_actions
 
-    def _is_goal(self, position: Position) -> bool:
+    def is_goal_state(self) -> bool:
         """
         Checks whether a position is a goal position.
         Args:
@@ -127,6 +132,7 @@ class MazeEnv(BaseEnv):
         Returns:
             boolean indicating whether the position is a goal position.
         """
+        position = self.maze.objects.agent.positions[0]
         for pos in self.maze.objects.goal.positions:
             if position[0] == pos[0] and position[1] == pos[1]:
                 return True
@@ -140,56 +146,3 @@ class MazeEnv(BaseEnv):
             the image of the maze.
         """
         return self.maze.to_rgb()
-
-
-class PartialObsMazeEnv(MazeEnv):
-    """ Partially observable maze environment class. """
-
-    def __init__(self, maze: list[list[int]], window_size: int):
-        super().__init__(maze)
-        self.window_size: int = window_size
-
-        self.observation_space = Box(
-            low=0,
-            high=len(self.maze.objects),
-            shape=[(2 * window_size + 1) ** 2],
-            dtype=np.int32
-        )
-
-    def _get_observation(self) -> np.ndarray:
-        """
-        Gets the observation of the environment.
-        Returns:
-            the observation of the environment (n x n window around the agent).
-        """
-        agent_position = self.maze.objects.agent.positions[0]
-        window = self.maze.to_value()[
-                 agent_position[0] - self.window_size: agent_position[0] + self.window_size + 1,
-                 agent_position[1] - self.window_size: agent_position[1] + self.window_size + 1]
-        return window.flatten()
-
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-        """
-        Performs a step in the maze environment.
-        Args:
-            action: the action to perform. (0: up, 1: right, 2: down, 3: left)
-
-        Returns:
-            the observation, the reward, whether the episode is done, and additional information.
-        """
-        _, reward, done, truncated, info = super().step(action)
-        return self._get_observation(), reward, done, truncated, info
-
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
-        """
-        Resets the environment.
-        Args:
-            seed: the seed to use.
-            options: additional options to use.
-
-        Returns:
-            the observation after resetting the environment.
-        """
-        _, info = super().reset(seed=seed, options=options)
-        return self._get_observation(), info

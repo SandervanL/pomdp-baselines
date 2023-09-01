@@ -38,7 +38,7 @@ class GridNavi(gym.Env):
         self.return_belief_rewards = return_belief_rewards
         self.modify_init_state_dist = modify_init_state_dist
 
-        self._max_episode_steps = num_steps
+        self.spec.max_episode_steps = num_steps
         self.step_count = 0
 
         self.observation_space = spaces.Box(
@@ -160,7 +160,7 @@ class GridNavi(gym.Env):
 
         # check if maximum step limit is reached
         self.step_count += 1
-        if self.step_count >= self._max_episode_steps:
+        if self.step_count >= self.spec.max_episode_steps:
             done = True
 
         # compute belief rewards reward

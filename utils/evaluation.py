@@ -228,7 +228,7 @@ def get_test_rollout(args, env, policy, encoder=None):
             episode_latent_means[episode_idx].append(curr_latent_mean[0].clone())
             episode_latent_logvars[episode_idx].append(curr_latent_logvar[0].clone())
 
-        for step_idx in range(1, env._max_episode_steps + 1):
+        for step_idx in range(1, env.spec.max_episode_steps + 1):
 
             episode_prev_obs[episode_idx].append(obs_raw.clone())
 
@@ -466,7 +466,7 @@ def plot_rollouts(observations, env):
     :param env:
     :return:
     """
-    episode_len = env.unwrapped._max_episode_steps
+    episode_len = env.unwrapped.spec.max_episode_steps
     assert (
             (len(observations) - 1) / episode_len
     ).is_integer(), "Error in observations length - env mismatch"
@@ -529,7 +529,7 @@ def visualize_bahavior(observations, env):
     :return:
     """
 
-    episode_len = env.unwrapped._max_episode_steps
+    episode_len = env.unwrapped.spec.max_episode_steps
     assert (
             (len(observations) - 1) / episode_len
     ).is_integer(), "Error in observations length - env mismatch"

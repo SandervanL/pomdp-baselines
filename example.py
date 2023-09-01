@@ -18,7 +18,7 @@ ptu.set_gpu_mode(torch.cuda.is_available() and cuda_id >= 0, cuda_id)
 
 env_name = "Pendulum-V-v0"
 env = gym.make(env_name)
-max_trajectory_len = env._max_episode_steps
+max_trajectory_len = env.spec.max_episode_steps
 act_dim = env.action_space.shape[0]
 obs_dim = env.observation_space.shape[0]
 print(env, obs_dim, act_dim, max_trajectory_len)
@@ -138,6 +138,7 @@ def collect_rollouts(
                 next_observations=ptu.get_numpy(
                     torch.cat(next_obs_list, dim=0)
                 ),  # (L, dim)
+                task_embedding=info.get('embedding')
             )
         print(
             "Mode:",

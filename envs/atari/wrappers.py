@@ -20,13 +20,13 @@ class DictWrapper(gym.ObservationWrapper):
 class TimeLimitWrapper(gym.Wrapper):
     def __init__(self, env, time_limit):
         super().__init__(env)
-        self._max_episode_steps = time_limit
+        self.spec.max_episode_steps = time_limit
         self.step_ = 0
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, reward, terminated, truncated, info = self.env.step(action)  # type: ignore
         self.step_ += 1
-        if self.step_ >= self._max_episode_steps:
+        if self.step_ >= self.spec.max_episode_steps:
             truncated = True
             info["TimeLimit.truncated"] = True
         return obs, reward, terminated, truncated, info

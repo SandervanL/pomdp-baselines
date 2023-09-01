@@ -35,7 +35,7 @@ class SAC(RLAlgorithmBase):
         else:
             self.alpha_entropy = entropy_alpha
 
-    def update_others(self, current_log_probs):
+    def update_others(self, current_log_probs: float) -> dict[str, float]:
         if self.automatic_entropy_tuning:
             alpha_entropy_loss = -self.log_alpha_entropy.exp() * (
                     current_log_probs + self.target_entropy

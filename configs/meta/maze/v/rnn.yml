@@ -1,16 +1,19 @@
 seed: 73
 cuda: 0 # use_gpu
 env:
-  env_type: pomdp
-  env_name: double-maze-partial-v0
+  env_type: meta
+  env_name: item-maze-meta-partial-v0
+  task_file: configs/meta/maze/v/simple_embeddings.pkl
+  max_rollouts_per_task: 1
 
-  num_eval_tasks: 20 # num of eval episodes
+  num_eval_tasks: 4 # num of eval episodes
+  num_train_tasks: 20 # num of train tasks
 
 train:
   # 50*200 = 10k steps
-  num_iters: 50 # number meta-training iterates
+  num_iters: 3000 # number meta-training iterates
   num_init_rollouts_pool: 5 # before training
-  num_rollouts_per_iter: 1
+  num_rollouts_per_iter: 25
 
   num_updates_per_iter: 1
   # buffer params
@@ -33,7 +36,9 @@ policy:
   action_embedding_size: 8 # no action input
   observ_embedding_size: 32
   reward_embedding_size: 8
+  task_embedding_size: 2
   rnn_hidden_size: 128
+  embedding_init: 1 # 0 zero embedding for cell & state, 1: hidden state, 2: cell state, 3: both
 
   dqn_layers: [ 128, 128 ]
   policy_layers: [ 128, 128 ]

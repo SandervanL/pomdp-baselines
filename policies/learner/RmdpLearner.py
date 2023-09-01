@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 
-from .Learner import Learner
+from .Learner import Learner, EvaluationResults
 from utils import logger
 
 
@@ -34,30 +34,30 @@ class RmdpLearner(Learner):
         self.eval_tasks = num_eval_tasks * [None]
 
         self.max_rollouts_per_task = 1
-        self.max_trajectory_len = self.train_env._max_episode_steps
+        self.max_trajectory_len = self.train_env.spec.max_episode_steps
 
-    def log_evaluate(self) -> tuple[np.ndarray, np.ndarray]:
-        returns_eval, success_rate_eval, _, total_steps_eval = self.evaluate(self.eval_tasks)
-        returns_eval = returns_eval.squeeze(-1)
+    def log_evaluate(self) -> EvaluationResults:
+        eval_results = self.evaluate(self.eval_tasks)
+        eval_results.returns_per_episode = eval_results.returns_per_episode.squeeze(-1)
         # np.quantile is introduced in np v1.15, so we have to use np.percentile
-        cutoff = np.percentile(returns_eval, 100 * self.worst_percentile)
+        cutoff = np.percentile(eval_results.returns_per_episode, 100 * self.worst_percentile)
         worst_indices = np.where(
-            returns_eval <= cutoff
+            eval_results.returns_per_episode <= cutoff
         )  # must be "<=" to avoid empty set
         returns_eval_worst, total_steps_eval_worst = (
-            returns_eval[worst_indices],
-            total_steps_eval[worst_indices],
+            eval_results.returns_per_episode[worst_indices],
+            eval_results.total_steps[worst_indices],
         )
 
-        logger.record_tabular("metrics/return_eval_avg", returns_eval.mean())
+        logger.record_tabular("metrics/return_eval_avg", eval_results.returns_per_episode.mean())
         logger.record_tabular(
             "metrics/return_eval_worst", returns_eval_worst.mean()
         )
         logger.record_tabular(
-            "metrics/total_steps_eval_avg", total_steps_eval.mean()
+            "metrics/total_steps_eval_avg", eval_results.total_steps.mean()
         )
         logger.record_tabular(
             "metrics/total_steps_eval_worst", total_steps_eval_worst.mean()
         )
 
-        return returns_eval, success_rate_eval
+        return eval_results

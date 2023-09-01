@@ -121,7 +121,7 @@ class HalfCheetahEnv(HalfCheetahEnv_):
             # keep track of position
             pos[episode_idx].append(unwrapped_env.get_body_com("torso")[0].copy())
 
-            for step_idx in range(1, env._max_episode_steps + 1):
+            for step_idx in range(1, env.spec.max_episode_steps + 1):
 
                 if step_idx == 1:
                     episode_prev_obs[episode_idx].append(start_obs_raw.clone())

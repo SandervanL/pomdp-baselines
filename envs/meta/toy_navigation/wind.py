@@ -24,7 +24,7 @@ class WindEnv(Env):
     ):
 
         self.n_tasks = n_tasks
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
         self.step_count = 0
 
         np.random.seed(1337)  # let's fix winds for reproducibility
@@ -83,7 +83,7 @@ class WindEnv(Env):
 
         # check if maximum step limit is reached
         self.step_count += 1
-        if self.step_count >= self._max_episode_steps:
+        if self.step_count >= self.spec.max_episode_steps:
             done = True
         else:
             done = False

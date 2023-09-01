@@ -1,7 +1,6 @@
 from typing import Optional, Any, SupportsFloat
 
 from gymnasium.core import ActType, ObsType
-from gymnasium.envs.registration import load
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -9,6 +8,7 @@ from gymnasium import spaces
 
 def mujoco_wrapper(entry_point, **kwargs):
     # Load the environment from its entry point
+    from gymnasium.envs.registration import load
     env_cls = load(entry_point)
     env = env_cls(**kwargs)
     return env
@@ -17,7 +17,7 @@ def mujoco_wrapper(entry_point, **kwargs):
 class VariBadWrapper(gym.Wrapper):
     def __init__(
             self,
-            env,
+            env: gym.Env,
             episodes_per_task: int,
             oracle: bool = False,  # default no
     ):
@@ -51,10 +51,7 @@ class VariBadWrapper(gym.Wrapper):
                 dtype=np.float32,
             )
 
-        if episodes_per_task > 1:
-            self.add_done_info = True
-        else:
-            self.add_done_info = False
+        self.add_done_info = episodes_per_task > 1
         if self.add_done_info:
             self.observation_space = spaces.Box(
                 low=np.array(
@@ -75,10 +72,10 @@ class VariBadWrapper(gym.Wrapper):
         # and if we train a policy that maximises the return over all episodes
         # we add transitions to the reset start in-between episodes
         try:
-            self.horizon_bamdp = self.episodes_per_task * self.env._max_episode_steps
+            self.horizon_bamdp = self.episodes_per_task * self.env.spec.max_episode_steps
         except AttributeError:
             self.horizon_bamdp = (
-                    self.episodes_per_task * self.env.unwrapped._max_episode_steps
+                    self.episodes_per_task * self.env.unwrapped.spec.max_episode_steps
             )
 
         # this tells us if we have reached the horizon in the underlying MDP
@@ -110,16 +107,17 @@ class VariBadWrapper(gym.Wrapper):
 
         self.done_mdp = False
 
-        return self._get_obs(state)
+        return self._get_obs(state), info
 
-    def wrap_state_with_done(self, state):
+    def wrap_state_with_done(self, state: np.ndarray) -> np.ndarray:
         # for some custom evaluation like semicircle
         if self.add_done_info:
             state = np.concatenate((state, [float(self.done_mdp)]))
         return state
 
-    def reset_mdp(self):
-        state, info = self.env.reset()
+    def reset_mdp(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict[str, Any]]:
+        state, info = self.env.reset(seed=seed, options=options)
         self.done_mdp = False
 
         return self._get_obs(state), info
@@ -158,7 +156,7 @@ class VariBadWrapper(gym.Wrapper):
 class TimeLimitMask(gym.Wrapper):
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, rew, terminated, truncated, info = self.env.step(action)
-        if truncated and self.env._max_episode_steps == self.env._elapsed_steps:
+        if truncated and self.env.spec.max_episode_steps == self.env._elapsed_steps:
             info["bad_transition"] = True
 
         return obs, rew, terminated, truncated, info

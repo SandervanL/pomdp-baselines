@@ -5,14 +5,14 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from policies.models.recurrent_base import Base_RNN
+from policies.models.recurrent_base import BaseRnn
 from policies.models.actor import MarkovPolicyBase
 from utils import helpers as utl
 from torchkit.constant import *
 import torchkit.pytorch_utils as ptu
 
 
-class ActorRnn(Base_RNN):
+class ActorRnn(BaseRnn):
     def __init__(
             self,
             policy_layers: list[int],
@@ -40,7 +40,8 @@ class ActorRnn(Base_RNN):
         else:  # pixel obs
             return self.image_encoder(observations)
 
-    def forward(self, prev_actions: Tensor, rewards: Tensor, observations: Tensor) -> tuple[
+    def forward(self, prev_actions: Tensor, rewards: Tensor, observations: Tensor,
+                initial_state: tuple[Tensor, Tensor]) -> tuple[
         Tensor, Tensor]:
         """
         For prev_actions a, rewards r, observations o: (T+1, B, dim)
@@ -55,7 +56,10 @@ class ActorRnn(Base_RNN):
         ### 1. get hidden/belief states of the whole/sub trajectories, aligned with states
         # return the hidden states (T+1, B, dim)
         hidden_states, _ = self.get_hidden_states(
-            prev_actions=prev_actions, rewards=rewards, observations=observations
+            prev_actions=prev_actions,
+            rewards=rewards,
+            observations=observations,
+            initial_internal_state=initial_state
         )
 
         # 2. another branch for current obs
@@ -66,38 +70,6 @@ class ActorRnn(Base_RNN):
 
         # 4. Actor
         return self.algo.forward_actor(actor=self.policy, observ=joint_embeds)
-
-    # TODO perhaps enable again? I need grad for the task embedder @torch.no_grad()
-    def get_initial_info(self, env_embedding: Optional[Tensor] = None, embedding_init: int = 0) -> \
-            tuple[Tensor, Tensor, tuple[Tensor]]:
-        """
-        Initialize the initial internal state of the RNN.
-        :param env_embedding: (1, B, internal_state_dim)
-        :param embedding_init: 0 for zero initialization,
-                               1 for hidden state initialization,
-                               2 for cell_state initialization,
-                               3 for both
-        """
-        assert (env_embedding is None and embedding_init == 0) or env_embedding is not None
-        # here we assume batch_size = 1
-
-        ## here we set the ndim = 2 for action and reward for compatibility
-        prev_action = ptu.zeros((1, self.action_dim)).float()
-        reward = ptu.zeros((1, 1)).float()
-
-        hidden_state = ptu.zeros((self.num_layers, 1, self.rnn_hidden_size)).float()
-        if self.encoder == GRU_name:
-            internal_state = hidden_state
-        else:
-            cell_state = ptu.zeros((self.num_layers, 1, self.rnn_hidden_size)).float()
-            if env_embedding is not None:
-                if embedding_init | 1 > 0:
-                    hidden_state = self.task_embedder(env_embedding)
-                if embedding_init | 2 > 0:
-                    cell_state = self.task_embedder(env_embedding)
-            internal_state = (hidden_state, cell_state)
-
-        return prev_action, reward, internal_state
 
     @torch.no_grad()
     def act(

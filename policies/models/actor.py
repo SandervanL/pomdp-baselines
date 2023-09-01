@@ -194,9 +194,12 @@ class CategoricalPolicy(MarkovPolicyBase):
         return: action (*, B, A), prob (*, B, A), log_prob (*, B, A)
         """
         action_logits = super().forward(obs)  # (*, A)
-
         prob, log_prob = None, None
+
         if deterministic:
+            if valid_actions is not None:
+                action_logits = ((action_logits + action_logits.min().abs() + 1)
+                                 * ptu.from_numpy(valid_actions))
             action = torch.argmax(action_logits, dim=-1)  # (*)
             assert not return_log_prob  # NOTE: cannot be used for estimating entropy
         else:
@@ -212,6 +215,9 @@ class CategoricalPolicy(MarkovPolicyBase):
             action = distribution.sample()  # (*)
             if return_log_prob:
                 log_prob = torch.log(torch.clamp(prob, min=PROB_MIN))
+
+        if valid_actions is not None and valid_actions[action.long()] == 0:
+            print('breakpoint')
 
         # convert to one-hot vectors
         action = F.one_hot(action.long(), num_classes=self.action_dim).float()  # (*, A)

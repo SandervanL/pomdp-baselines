@@ -1,14 +1,17 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
+from torch import Tensor
 from torch.nn import functional as F
 
-from policies.models.recurrent_base import Base_RNN
+from policies.models.recurrent_base import BaseRnn
 from policies.rl.base import RLAlgorithmBase
 from utils import helpers as utl
 from torchkit.constant import *
 
 
-class Critic_RNN(Base_RNN):
+class CriticRnn(BaseRnn):
     def __init__(
             self,
             dqn_layers: list[int],
@@ -69,7 +72,9 @@ class Critic_RNN(Base_RNN):
             # for image-based discrete action problems (not using actions)
             return self.image_encoder(observations)
 
-    def forward(self, prev_actions, rewards, observations, current_actions):
+    def forward(self, prev_actions: Tensor, rewards: Tensor, observations: Tensor,
+                current_actions: Tensor, initial_state: Optional[tuple[Tensor, Tensor]] = None) -> \
+            tuple[Tensor, Tensor]:
         """
         For prev_actions a, rewards r, observations o: (T+1, B, dim)
                 a[t] -> r[t], o[t]
@@ -89,7 +94,10 @@ class Critic_RNN(Base_RNN):
         ### 1. get hidden/belief states of the whole/sub trajectories, aligned with observations
         # return the hidden states (T+1, B, dim)
         hidden_states, _ = self.get_hidden_states(
-            prev_actions=prev_actions, rewards=rewards, observations=observations
+            prev_actions=prev_actions,
+            rewards=rewards,
+            observations=observations,
+            initial_internal_state=initial_state
         )
 
         # 2. another branch for state & **current** action

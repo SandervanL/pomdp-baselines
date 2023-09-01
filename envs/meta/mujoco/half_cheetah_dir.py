@@ -31,7 +31,7 @@ class HalfCheetahDirEnv(HalfCheetahEnv):
         self.n_tasks = n_tasks
         assert n_tasks == None
         self._goal = self._sample_raw_task()["goal"]
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
         super(HalfCheetahDirEnv, self).__init__()
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:

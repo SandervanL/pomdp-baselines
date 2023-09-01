@@ -20,7 +20,7 @@ class RescaledEnv(Env):
         obs_space = env.observation_space
         self.bounds = list(zip(obs_space.low, obs_space.high))
         if max_episode_length is not None:
-            self.env._max_episode_steps = max_episode_length
+            self.env.spec.max_episode_steps = max_episode_length
 
     def _rescale(self, state: np.ndarray) -> np.ndarray:
         """

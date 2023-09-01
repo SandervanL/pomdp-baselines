@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from .Learner import Learner
+from .Learner import Learner, EvaluationResults
 from utils import logger
 from utils import evaluation as utl_eval
 
@@ -26,19 +26,17 @@ class MetaLearner(Learner):
         self.train_env = make_env(
             env_name,
             max_rollouts_per_task,
-            seed=self.seed,
             n_tasks=num_tasks,
             **kwargs,
         )  # oracle in kwargs
         self.eval_env = self.train_env
-        self.eval_env.seed(self.seed + 1)
 
-        if self.train_env.n_tasks is not None:
+        if self.train_env.get_wrapper_attr('n_tasks') is not None:
             # NOTE: This is off-policy varibad's setting, i.e. limited training tasks
             # split to train/eval tasks
             assert num_train_tasks >= num_eval_tasks > 0
             shuffled_tasks = np.random.permutation(
-                self.train_env.unwrapped.get_all_task_idx()
+                self.train_env.get_all_task_idx()
             )
             self.train_tasks = shuffled_tasks[:num_train_tasks]
             self.eval_tasks = shuffled_tasks[-num_eval_tasks:]
@@ -55,31 +53,16 @@ class MetaLearner(Learner):
         self.max_rollouts_per_task = max_rollouts_per_task
         self.max_trajectory_len = self.train_env.horizon_bamdp  # H^+ = k * H
 
-    def log_evaluate(self) -> tuple[np.ndarray, np.ndarray]:
-        if self.train_env.n_tasks is not None:
-            (
-                returns_train,
-                success_rate_train,
-                observations,
-                total_steps_train,
-            ) = self.evaluate(self.train_tasks[: len(self.eval_tasks)])
-        (
-            returns_eval,
-            success_rate_eval,
-            observations_eval,
-            total_steps_eval,
-        ) = self.evaluate(self.eval_tasks)
-        if self.eval_stochastic:
-            (
-                returns_eval_sto,
-                success_rate_eval_sto,
-                observations_eval_sto,
-                total_steps_eval_sto,
-            ) = self.evaluate(self.eval_tasks, deterministic=False)
+    def log_evaluate(self) -> EvaluationResults:
+        if self.train_env.get_wrapper_attr('n_tasks') is not None:
+            train_results = self.evaluate(self.train_tasks[: len(self.eval_tasks)])
 
-        if self.train_env.n_tasks is not None and "plot_behavior" in dir(
-                self.eval_env.unwrapped
-        ):
+        eval_results = self.evaluate(self.eval_tasks)
+        if self.eval_stochastic:
+            eval_sto_results = self.evaluate(self.eval_tasks, deterministic=False)
+
+        if (self.train_env.get_wrapper_attr('n_tasks') is not None
+                and "plot_behavior" in dir(self.eval_env.unwrapped)):
             # plot goal-reaching trajs
             for i, task in enumerate(
                     self.train_tasks[: min(5, len(self.eval_tasks))]
@@ -87,7 +70,7 @@ class MetaLearner(Learner):
                 self.eval_env.reset(task=task, seed=self.seed + 1)  # must have task argument
                 logger.add_figure(
                     "trajectory/train_task_{}".format(i),
-                    utl_eval.plot_rollouts(observations[i, :], self.eval_env),
+                    utl_eval.plot_rollouts(train_results.observations[i, :], self.eval_env),
                 )
 
             for i, task in enumerate(
@@ -96,13 +79,13 @@ class MetaLearner(Learner):
                 self.eval_env.reset(task=task, seed=self.seed + 1)
                 logger.add_figure(
                     "trajectory/eval_task_{}".format(i),
-                    utl_eval.plot_rollouts(observations_eval[i, :], self.eval_env),
+                    utl_eval.plot_rollouts(eval_results.observations[i, :], self.eval_env),
                 )
                 if self.eval_stochastic:
                     logger.add_figure(
                         "trajectory/eval_task_{}_sto".format(i),
                         utl_eval.plot_rollouts(
-                            observations_eval_sto[i, :], self.eval_env
+                            eval_sto_results.observations[i, :], self.eval_env
                         ),
                     )
 
@@ -116,51 +99,51 @@ class MetaLearner(Learner):
             )
             if self.train_env.n_tasks is not None:
                 logger.record_tabular(
-                    "metrics/success_rate_train", np.mean(success_rate_train)
+                    "metrics/success_rate_train", np.mean(train_results.success_rate)
                 )
             logger.record_tabular(
-                "metrics/success_rate_eval", np.mean(success_rate_eval)
+                "metrics/success_rate_eval", np.mean(eval_results.success_rate)
             )
             if self.eval_stochastic:
                 logger.record_tabular(
-                    "metrics/success_rate_eval_sto", np.mean(success_rate_eval_sto)
+                    "metrics/success_rate_eval_sto", np.mean(eval_sto_results.success_rate)
                 )
 
         for episode_idx in range(self.max_rollouts_per_task):
             if self.train_env.n_tasks is not None:
                 logger.record_tabular(
                     "metrics/return_train_episode_{}".format(episode_idx + 1),
-                    np.mean(returns_train[:, episode_idx]),
+                    np.mean(train_results.returns_per_episode[:, episode_idx]),
                 )
             logger.record_tabular(
                 "metrics/return_eval_episode_{}".format(episode_idx + 1),
-                np.mean(returns_eval[:, episode_idx]),
+                np.mean(eval_results.returns_per_episode[:, episode_idx]),
             )
             if self.eval_stochastic:
                 logger.record_tabular(
                     "metrics/return_eval_episode_{}_sto".format(episode_idx + 1),
-                    np.mean(returns_eval_sto[:, episode_idx]),
+                    np.mean(eval_sto_results[:, episode_idx]),
                 )
 
         if self.train_env.n_tasks is not None:
             logger.record_tabular(
-                "metrics/total_steps_train", np.mean(total_steps_train)
+                "metrics/total_steps_train", np.mean(train_results.total_steps)
             )
             logger.record_tabular(
                 "metrics/return_train_total",
-                np.mean(np.sum(returns_train, axis=-1)),
+                np.mean(np.sum(train_results.returns_per_episode, axis=-1)),
             )
-        logger.record_tabular("metrics/total_steps_eval", np.mean(total_steps_eval))
+        logger.record_tabular("metrics/total_steps_eval", np.mean(eval_results.total_steps))
         logger.record_tabular(
-            "metrics/return_eval_total", np.mean(np.sum(returns_eval, axis=-1))
+            "metrics/return_eval_total", np.mean(np.sum(eval_results.total_steps, axis=-1))
         )
         if self.eval_stochastic:
             logger.record_tabular(
-                "metrics/total_steps_eval_sto", np.mean(total_steps_eval_sto)
+                "metrics/total_steps_eval_sto", np.mean(eval_sto_results.total_steps)
             )
             logger.record_tabular(
                 "metrics/return_eval_total_sto",
-                np.mean(np.sum(returns_eval_sto, axis=-1)),
+                np.mean(np.sum(eval_sto_results.returns_per_episode, axis=-1)),
             )
 
-        return returns_eval, success_rate_eval
+        return eval_results

@@ -9,7 +9,7 @@ from .ant_multitask_base import MultitaskAntEnv
 class AntGoalEnv(MultitaskAntEnv):
     def __init__(self, task={}, n_tasks=2, max_episode_steps=200, **kwargs):
         super(AntGoalEnv, self).__init__(task, n_tasks, **kwargs)
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         self.do_simulation(action, self.frame_skip)

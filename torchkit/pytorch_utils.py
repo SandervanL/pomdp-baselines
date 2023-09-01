@@ -163,5 +163,9 @@ def tensor(*args, **kwargs) -> Tensor:
     return torch.tensor(*args, **kwargs).to(device)
 
 
+def to_device(tensor: Tensor) -> Tensor:
+    return tensor.to(device)
+
+
 def round_tensor(tensor: Tensor, n_digits: int) -> Tensor:
     return (tensor * 10 ** n_digits).round() / (10 ** n_digits)

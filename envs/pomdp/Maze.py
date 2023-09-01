@@ -7,9 +7,13 @@ from mazelab import DeepMindColor as Color
 
 class Maze(BaseMaze):
     """ Maze class to be used in the environment. """
-    def __init__(self, maze: list[list[int]], **kwargs):
+
+    def __init__(self, maze: Union[np.ndarray, list[list[int]]], **kwargs):
         """ Initialize the maze."""
-        self.maze = np.array(maze)
+        if isinstance(maze, np.ndarray):
+            self.maze = maze
+        else:
+            self.maze = np.array(maze)
         super().__init__(**kwargs)
 
     @property

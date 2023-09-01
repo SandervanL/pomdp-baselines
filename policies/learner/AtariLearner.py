@@ -24,4 +24,4 @@ class AtariLearner(Learner):
         self.eval_tasks = num_eval_tasks * [None]
 
         self.max_rollouts_per_task = 1
-        self.max_trajectory_len = self.train_env._max_episode_steps
+        self.max_trajectory_len = self.train_env.spec.max_episode_steps

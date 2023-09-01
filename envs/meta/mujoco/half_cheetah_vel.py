@@ -29,7 +29,7 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
         self.tasks = self.sample_tasks(n_tasks)
         self._goal_vel = self.tasks[0].get("velocity", 0.0)
         self._goal = self._goal_vel
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
         super(HalfCheetahVelEnv, self).__init__()
 
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:

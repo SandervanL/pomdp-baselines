@@ -1,7 +1,8 @@
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 
 from gymnasium.core import ObsType
 from torch import nn, Tensor
+from torch.nn import Module
 
 from policies.models.actor import MarkovPolicyBase
 
@@ -48,16 +49,17 @@ class RLAlgorithmBase:
             self,
             markov_actor: bool,
             markov_critic: bool,
-            actor,
-            actor_target,
-            critic,
-            critic_target,
-            observations,
-            actions,
-            rewards,
-            dones,
-            gamma,
-            next_observations,
+            actor: Module,
+            actor_target: Module,
+            critic: Module,
+            critic_target: Module,
+            observations: Tensor,
+            actions: Tensor,
+            rewards: Tensor,
+            dones: Tensor,
+            gamma: float,
+            next_observations: Optional[Tensor] = None,  # used in markov_critic
+            task_embeddings: Optional[Tensor] = None,
     ) -> Tuple[Tuple[Any, Any], Any]:
         """
         return (q1_pred, q2_pred), q_target
@@ -68,13 +70,14 @@ class RLAlgorithmBase:
             self,
             markov_actor: bool,
             markov_critic: bool,
-            actor,
-            actor_target,
-            critic,
-            critic_target,
-            observations,
-            actions,
-            rewards,
+            actor: Module,
+            actor_target: Module,
+            critic: Module,
+            critic_target: Module,
+            observations: Tensor,
+            actions: Tensor,
+            rewards: Tensor,
+            task_embeddings: Optional[Tensor] = None,
     ) -> Tuple[Any, Any]:
         """
         return policy_loss, log_probs*

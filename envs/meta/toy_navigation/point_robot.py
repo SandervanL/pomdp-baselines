@@ -26,7 +26,7 @@ class PointEnv(Env):
     ):
 
         self.n_tasks = n_tasks
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
         self.step_count = 0
         self.modify_init_state_dist = modify_init_state_dist
         self.on_circle_init_state = on_circle_init_state
@@ -86,7 +86,7 @@ class PointEnv(Env):
 
         # check if maximum step limit is reached
         self.step_count += 1
-        if self.step_count >= self._max_episode_steps:
+        if self.step_count >= self.spec.max_episode_steps:
             done = True
         else:
             done = False

@@ -4,6 +4,7 @@
 import torch
 from copy import deepcopy
 import torch.nn as nn
+from torch import Tensor
 from torch.nn import functional as F
 from torch.optim import Adam
 from utils import helpers as utl
@@ -321,7 +322,7 @@ class ModelFreeOffPolicy_Shared_RNN(nn.Module):
         return self.forward(actions, rewards, observations, dones, masks)
 
     @torch.no_grad()
-    def get_initial_info(self):
+    def get_initial_info(self) -> tuple[Tensor, Tensor, tuple[Tensor]]:
         # here we assume batch_size = 1
 
         ## here we set the ndim = 2 for action and reward for compatibility

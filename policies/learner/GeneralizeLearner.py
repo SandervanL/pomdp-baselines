@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 
-from .Learner import Learner
+from .Learner import Learner, EvaluationResults
 from utils import logger
 
 
@@ -45,10 +45,14 @@ class GeneralizeLearner(Learner):
 
         self.train_tasks = []
         self.max_rollouts_per_task = 1
-        self.max_trajectory_len = self.train_env._max_episode_steps
+        self.max_trajectory_len = self.train_env.spec.max_episode_steps
 
-    def log_evaluate(self) -> tuple[np.ndarray, np.ndarray]:
-        returns_eval, success_rate_eval, total_steps_eval = {}, {}, {}
+    def log_evaluate(self) -> EvaluationResults:
+        eval_results = EvaluationResults()
+        eval_results.success_rate = {}
+        eval_results.total_steps = {}
+        eval_results.returns_per_episode = {}
+        eval_results.observations = {}
         for env, (env_name, eval_num_episodes_per_task) in self.eval_envs.items():
             self.eval_env = env  # assign eval_env, not train_env
             for suffix, deterministic in zip(["", "_sto"], [True, False]):
@@ -58,21 +62,16 @@ class GeneralizeLearner(Learner):
                     eval_num_episodes_per_task * [None],
                     deterministic=deterministic,
                 )
-                returns_eval[
-                    self.train_env_name + env_name + suffix
-                    ] = return_eval.squeeze(-1)
-                success_rate_eval[
-                    self.train_env_name + env_name + suffix
-                    ] = success_eval
-                total_steps_eval[
-                    self.train_env_name + env_name + suffix
-                    ] = total_step_eval
+                key = self.train_env_name + env_name + suffix
+                eval_results.returns_per_episode[key] = return_eval.squeeze(-1)
+                eval_results.success_rate[key] = success_eval
+                eval_results.total_steps[key] = total_step_eval
 
-        for k, v in returns_eval.items():
+        for k, v in eval_results.returns_per_episode.items():
             logger.record_tabular(f"metrics/return_eval_{k}", np.mean(v))
-        for k, v in success_rate_eval.items():
+        for k, v in eval_results.success_rate.items():
             logger.record_tabular(f"metrics/succ_eval_{k}", np.mean(v))
-        for k, v in total_steps_eval.items():
+        for k, v in eval_results.total_steps.items():
             logger.record_tabular(f"metrics/total_steps_eval_{k}", np.mean(v))
 
-        return returns_eval, success_rate_eval
+        return eval_results

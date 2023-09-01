@@ -11,6 +11,8 @@ from .base import RLAlgorithmBase
 from policies.models.actor import CategoricalPolicy, MarkovPolicyBase
 from torchkit.networks import FlattenMlp, Mlp
 import torchkit.pytorch_utils as ptu
+from ..models.recurrent_actor import ActorRnn
+from ..models.recurrent_critic import CriticRnn
 
 
 class SACD(RLAlgorithmBase):
@@ -80,17 +82,19 @@ class SACD(RLAlgorithmBase):
             self,
             markov_actor: bool,
             markov_critic: bool,
-            actor: Module,
-            actor_target: Module,
-            critic: Module,
-            critic_target: Module,
+            actor: ActorRnn,
+            actor_target: ActorRnn,
+            critic: CriticRnn,
+            critic_target: CriticRnn,
             observations: Tensor,
             actions: Tensor,
             rewards: Tensor,
             dones: Tensor,
             gamma: float,
             next_observations: Optional[Tensor] = None,  # used in markov_critic
+            task_embeddings: Optional[Tensor] = None,
     ):
+        batch_size = actions.shape[1]
         # Q^tar(h(t+1), pi(h(t+1))) + H[pi(h(t+1))]
         with torch.no_grad():
             # first next_actions from current policy,
@@ -99,22 +103,26 @@ class SACD(RLAlgorithmBase):
                     actor, next_observations if markov_critic else observations
                 )
             else:
+                _, _, initial_state = actor.get_initial_info(batch_size, task_embeddings)
                 # (T+1, B, dim) including reaction to last obs
                 new_probs, new_log_probs = actor(
                     prev_actions=actions,
                     rewards=rewards,
                     observations=next_observations if markov_critic else observations,
+                    initial_state=initial_state
                 )
 
             if markov_critic:  # (B, A)
                 next_q1 = critic_target[0](next_observations)
                 next_q2 = critic_target[1](next_observations)
             else:
+                _, _, initial_state = critic_target.get_initial_info(batch_size, task_embeddings)
                 next_q1, next_q2 = critic_target(
                     prev_actions=actions,
                     rewards=rewards,
                     observations=observations,
                     current_actions=new_probs,
+                    initial_state=initial_state
                 )  # (T+1, B, A)
 
             min_next_q_target = torch.min(next_q1, next_q2)
@@ -140,11 +148,13 @@ class SACD(RLAlgorithmBase):
 
         else:
             # Q(h(t), a(t)) (T, B, 1)
+            _, _, initial_state = critic.get_initial_info(batch_size, task_embeddings)
             q1_pred, q2_pred = critic(
                 prev_actions=actions,
                 rewards=rewards,
                 observations=observations,
                 current_actions=actions[1:],
+                initial_state=initial_state,
             )  # (T, B, A)
 
             stored_actions = actions[1:]  # (T, B, A)
@@ -164,30 +174,38 @@ class SACD(RLAlgorithmBase):
             self,
             markov_actor: bool,
             markov_critic: bool,
-            actor: Module,
-            actor_target: Module,
-            critic: Module,
-            critic_target: Module,
+            actor: ActorRnn,
+            actor_target: ActorRnn,
+            critic: CriticRnn,
+            critic_target: CriticRnn,
             observations: Tensor,
             actions: Optional[Tensor] = None,
             rewards: Optional[Tensor] = None,
+            task_embeddings: Optional[Tensor] = None
     ) -> tuple[Tensor, Tensor]:
+        batch_size = actions.shape[1]
         if markov_actor:
             new_probs, log_probs = self.forward_actor(actor, observations)
         else:
+            _, _, initial_state = actor.get_initial_info(batch_size, task_embeddings)
             new_probs, log_probs = actor(
-                prev_actions=actions, rewards=rewards, observations=observations
+                prev_actions=actions,
+                rewards=rewards,
+                observations=observations,
+                initial_state=initial_state
             )  # (T+1, B, A)
 
         if markov_critic:
             q1 = critic[0](observations)
             q2 = critic[1](observations)
         else:
+            _, _, initial_state = critic.get_initial_info(batch_size, task_embeddings)
             q1, q2 = critic(
                 prev_actions=actions,
                 rewards=rewards,
                 observations=observations,
                 current_actions=new_probs,
+                initial_state=initial_state
             )  # (T+1, B, A)
         min_q_new_actions = torch.min(q1, q2)  # (T+1,B,A)
 

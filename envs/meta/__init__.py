@@ -1,4 +1,8 @@
 from gymnasium.envs.registration import register
+import gymnasium as gym
+
+from envs.meta.maze.Mazes import ITEM_META_MAP, BIG_ITEM_META_MAP
+from envs.pomdp import MAX_MAZE_STEPS
 
 ## off-policy variBAD benchmark
 
@@ -63,4 +67,46 @@ register(
         "n_tasks": None,
     },
     max_episode_steps=200,
+)
+
+# MDP Item maps
+register(
+    "item-maze-fully-v0",
+    entry_point="envs.pomdp.MazeEnv:MazeEnv",
+    kwargs=dict(maze=ITEM_META_MAP),
+    max_episode_steps=MAX_MAZE_STEPS
+)
+register(
+    "big-item-maze-fully-v0",
+    entry_point="envs.pomdp.MazeEnv:MazeEnv",
+    kwargs=dict(maze=BIG_ITEM_META_MAP),
+    max_episode_steps=MAX_MAZE_STEPS
+)
+
+# Partial obs maps
+register(
+    "item-maze-partial-v0",
+    entry_point="envs.pomdp.wrappers:POMDPMazeWrapper",
+    kwargs=dict(env=gym.make("item-maze-fully-v0"), window_size=1),
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "big-item-maze-partial-v0",
+    entry_point="envs.pomdp.wrappers:POMDPMazeWrapper",
+    kwargs=dict(env=gym.make("big-item-maze-fully-v0"), window_size=1),
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+
+# Meta maps
+register(
+    'item-maze-meta-partial-v0',
+    entry_point="envs.meta.maze.MultitaskMazeEnv:MultitaskMazeEnv",
+    kwargs=dict(env=gym.make("item-maze-partial-v0")),
+    max_episode_steps=MAX_MAZE_STEPS
+)
+register(
+    'big-item-maze-meta-partial-v0',
+    entry_point="envs.meta.maze.MultitaskMazeEnv:MultitaskMazeEnv",
+    kwargs=dict(env=gym.make("big-item-maze-partial-v0")),
+    max_episode_steps=MAX_MAZE_STEPS
 )

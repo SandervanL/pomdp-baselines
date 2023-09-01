@@ -7,17 +7,12 @@ from envs.meta.wrappers import VariBadWrapper
 # In BOReL, they use off-policy SAC by single env.
 
 
-def make_env(env_id, episodes_per_task, seed=None, oracle=False, **kwargs):
+def make_env(env_id: str, episodes_per_task: int, oracle: bool = False, **kwargs):
     """
     kwargs: include n_tasks=num_tasks
     """
-    env = gym.make(env_id, **kwargs)
-    if seed is not None:
-        env.seed(seed)
-        env.action_space.np_random.seed(seed)
-    env = VariBadWrapper(
-        env=env,
+    return VariBadWrapper(
+        env=gym.make(env_id, **kwargs),
         episodes_per_task=episodes_per_task,
         oracle=oracle,
     )
-    return env
