@@ -55,7 +55,7 @@ class MazeEnv(BaseEnv):
         motion = self.motions[action]
         current_position = self.maze.objects.agent.positions[0]
         new_position: Position = current_position[0] + motion[0], current_position[1] + motion[1]
-        valid = self._is_valid(new_position)
+        valid = self._are_valid([new_position])[0]
 
         if valid:
             self.maze.objects.agent.positions = [new_position]
@@ -67,6 +67,7 @@ class MazeEnv(BaseEnv):
             info['success'] = done = True
         elif not valid:
             reward = -1  # -1
+            git
             done = False
         else:
             reward = -0.01
@@ -85,28 +86,34 @@ class MazeEnv(BaseEnv):
         Returns:
             the observation after resetting the environment.
         """
-        super().reset(seed=seed, options=options)
+        _, info = super().reset(seed=seed, options=options)
         self.maze.objects.agent.positions = self.start_position
         self.maze.objects.goal.positions = self.goal_positions
         next_state = self.maze.to_value()
-        return next_state.flatten(), {
-            'valid_actions': self._get_valid_actions(),
-            'original_state': next_state
-        }
+        info['valid_actions'] = self._get_valid_actions()
+        info['original_state'] = next_state
+        return next_state.flatten(), info
 
-    def _is_valid(self, position: Position) -> bool:
+    def _are_valid(self, positions: list[Position]) -> list[bool]:
         """
         Checks whether a position is valid.
         Args:
-            position: the position to check.
+            positions: the positions to check.
 
         Returns:
             boolean indicating whether the position is valid.
         """
-        non_negative = position[0] >= 0 and position[1] >= 0
-        within_edge = position[0] < self.maze.size[0] and position[1] < self.maze.size[1]
-        passable = not self.maze.to_impassable()[position[0]][position[1]]
-        return non_negative and within_edge and passable
+        result = [False] * len(positions)
+        is_impassable_maze = self.maze.to_impassable()
+
+        # Pycharm type annotator is not convinced that 'position' is of type Position, but it is.
+        for index, position in enumerate(positions):
+            non_negative = position[0] >= 0 and position[1] >= 0
+            within_edge = position[0] < self.maze.size[0] and position[1] < self.maze.size[1]
+            passable = not is_impassable_maze[position[0]][position[1]]
+            result[index] = non_negative and within_edge and passable
+
+        return result
 
     def _get_valid_actions(self) -> np.ndarray:
         """
@@ -114,14 +121,13 @@ class MazeEnv(BaseEnv):
         Returns:
             list of numbers for if an action is valid (0 for invalid, 1 for valid).
         """
-        valid_actions = np.int8([0] * len(self.motions))
+        new_positions: list[Position] = [(0, 0)] * len(self.motions)
+        current_pos = self.maze.objects.agent.positions[0]
         for action, motion in enumerate(self.motions):
-            current_pos = self.maze.objects.agent.positions[0]
-            new_position: Position = current_pos[0] + motion[0], current_pos[1] + motion[1]
-            if self._is_valid(new_position):
-                valid_actions[action] = 1
+            new_positions[action] = current_pos[0] + motion[0], current_pos[1] + motion[1]
 
-        return valid_actions
+        valid_actions = self._are_valid(new_positions)
+        return np.array(valid_actions, dtype=np.uint8)
 
     def is_goal_state(self) -> bool:
         """

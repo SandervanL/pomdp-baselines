@@ -61,7 +61,7 @@ class POMDPMazeWrapper(gym.Wrapper):
 
         self.observation_space = Box(
             low=0,
-            high=len(self.maze.objects),
+            high=len(self.unwrapped.maze.objects),
             shape=[(2 * window_size + 1) ** 2],
             dtype=np.int32
         )
@@ -72,7 +72,7 @@ class POMDPMazeWrapper(gym.Wrapper):
         Returns:
             the observation of the environment (n x n window around the agent).
         """
-        agent_position = self.maze.objects.agent.positions[0]
+        agent_position = self.unwrapped.maze.objects.agent.positions[0]
         return state[
                agent_position[0] - self.window_size: agent_position[0] + self.window_size + 1,
                agent_position[1] - self.window_size: agent_position[1] + self.window_size + 1

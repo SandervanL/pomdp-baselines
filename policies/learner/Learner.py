@@ -320,7 +320,7 @@ class Learner:
         for idx in range(num_rollouts):
             steps = 0
 
-            if self.env_type == "meta" and self.train_env.n_tasks is not None:
+            if self.env_type == "meta" and self.train_env.get_wrapper_attr('n_tasks') is not None:
                 task = self.train_tasks[np.random.randint(len(self.train_tasks))]
                 obs_numpy, info = self.train_env.reset(task=task, seed=self.seed)
             else:
@@ -510,7 +510,7 @@ class Learner:
         for task_idx, task in enumerate(tasks):
             step = 0
 
-            if self.env_type == "meta" and self.eval_env.n_tasks is not None:
+            if self.env_type == "meta" and self.eval_env.get_wrapper_attr('n_tasks') is not None:
                 obs_numpy, info = self.eval_env.reset(task=task, seed=self.seed + 1)
                 obs = ptu.from_numpy(obs_numpy)  # reset task
                 results.observations[task_idx, step, :] = ptu.get_numpy(obs[:obs_size])

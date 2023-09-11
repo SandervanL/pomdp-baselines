@@ -94,7 +94,8 @@ class VariBadWrapper(gym.Wrapper):
             tuple[np.ndarray, dict]:
 
         # reset task -- this sets goal and state -- sets self.env._goal and self.env._state
-        self.env.reset_task(task)
+        task_reset = self.env.get_wrapper_attr('reset_task')
+        task_reset(task)
 
         self.episode_count = 0
         self.step_count_bamdp = 0

@@ -36,7 +36,7 @@ class MetaLearner(Learner):
             # split to train/eval tasks
             assert num_train_tasks >= num_eval_tasks > 0
             shuffled_tasks = np.random.permutation(
-                self.train_env.get_all_task_idx()
+                self.train_env.get_wrapper_attr('get_all_task_idx')()
             )
             self.train_tasks = shuffled_tasks[:num_train_tasks]
             self.eval_tasks = shuffled_tasks[-num_eval_tasks:]
@@ -97,7 +97,7 @@ class MetaLearner(Learner):
                 "metrics/successes_in_buffer",
                 self._successes_in_buffer / self._n_env_steps_total,
             )
-            if self.train_env.n_tasks is not None:
+            if self.train_env.get_wrapper_attr('n_tasks') is not None:
                 logger.record_tabular(
                     "metrics/success_rate_train", np.mean(train_results.success_rate)
                 )
@@ -110,7 +110,7 @@ class MetaLearner(Learner):
                 )
 
         for episode_idx in range(self.max_rollouts_per_task):
-            if self.train_env.n_tasks is not None:
+            if self.train_env.get_wrapper_attr('n_tasks') is not None:
                 logger.record_tabular(
                     "metrics/return_train_episode_{}".format(episode_idx + 1),
                     np.mean(train_results.returns_per_episode[:, episode_idx]),
@@ -125,7 +125,7 @@ class MetaLearner(Learner):
                     np.mean(eval_sto_results[:, episode_idx]),
                 )
 
-        if self.train_env.n_tasks is not None:
+        if self.train_env.get_wrapper_attr('n_tasks') is not None:
             logger.record_tabular(
                 "metrics/total_steps_train", np.mean(train_results.total_steps)
             )

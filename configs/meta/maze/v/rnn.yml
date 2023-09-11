@@ -3,11 +3,11 @@ cuda: 0 # use_gpu
 env:
   env_type: meta
   env_name: item-maze-meta-partial-v0
-  task_file: configs/meta/maze/v/simple_embeddings.pkl
+  task_file: configs/meta/maze/v/single_embeddings.pkl
   max_rollouts_per_task: 1
 
-  num_eval_tasks: 4 # num of eval episodes
-  num_train_tasks: 20 # num of train tasks
+  num_eval_tasks: 6 # num of eval episodes
+  num_train_tasks: 36 # num of train tasks
 
 train:
   # 50*200 = 10k steps
@@ -18,7 +18,7 @@ train:
   num_updates_per_iter: 1
   # buffer params
   buffer_size: 1e6
-  batch_size: 32 # to tune based on sampled_seq_len
+  batch_size: 128 # to tune based on sampled_seq_len
   sampled_seq_len: -1 # -1 is all, or positive integer
   sample_weight_baseline: 0.0
 
@@ -36,7 +36,7 @@ policy:
   action_embedding_size: 8 # no action input
   observ_embedding_size: 32
   reward_embedding_size: 8
-  task_embedding_size: 2
+  task_embedding_size: 1
   rnn_hidden_size: 128
   embedding_init: 1 # 0 zero embedding for cell & state, 1: hidden state, 2: cell state, 3: both
 

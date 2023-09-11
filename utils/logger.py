@@ -4,9 +4,11 @@ import os.path as osp
 import json
 import time
 import datetime
+from collections.abc import Set
+
 import dateutil.tz
 import tempfile
-from collections import OrderedDict, Set
+from collections import OrderedDict
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -57,7 +59,7 @@ def put_in_middle(str1, str2):
         return str2
     else:
         start = (n - m) // 2
-        return str1[:start] + str2 + str1[start + m :]
+        return str1[:start] + str2 + str1[start + m:]
 
 
 class HumanOutputFormat(KVWriter, SeqWriter):
@@ -67,7 +69,7 @@ class HumanOutputFormat(KVWriter, SeqWriter):
             self.own_file = True
         else:
             assert hasattr(filename_or_file, "read"), (
-                "expected file or str, got %s" % filename_or_file
+                    "expected file or str, got %s" % filename_or_file
             )
             self.file = filename_or_file
             self.own_file = False

@@ -34,7 +34,6 @@ class MultitaskMazeEnv(gym.Wrapper):
         """
         obs, info = self.env.reset(seed=seed, options=options)
         info['embedding'] = self.task.embedding
-        info['embedding_method'] = self.task.embedding_method
         return obs, info
 
     def reset_task(self, task: Optional[int] = None, *, seed: Optional[int] = None,

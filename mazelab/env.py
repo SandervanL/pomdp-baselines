@@ -24,6 +24,7 @@ class BaseEnv(gym.Env, ABC):
     @abstractmethod
     def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """ Perform one step in the environment."""
+        pass
 
     @abstractmethod
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
