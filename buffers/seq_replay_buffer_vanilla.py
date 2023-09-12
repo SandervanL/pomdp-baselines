@@ -7,14 +7,14 @@ class SeqReplayBuffer:
     buffer_type = "seq_vanilla"
 
     def __init__(
-            self,
-            max_replay_buffer_size: int,
-            observation_dim: int,
-            action_dim: int,
-            sampled_seq_len: int,
-            sample_weight_baseline: float,
-            task_embedding_dim: Optional[int] = None,
-            **kwargs
+        self,
+        max_replay_buffer_size: int,
+        observation_dim: int,
+        action_dim: int,
+        sampled_seq_len: int,
+        sample_weight_baseline: float,
+        task_dim: Optional[int] = None,
+        **kwargs,
     ):
         """
         this buffer is used for sequence/trajectory/episode:
@@ -57,8 +57,11 @@ class SeqReplayBuffer:
         # See _compute_valid_starts function for details
         self._valid_starts = np.zeros((max_replay_buffer_size), dtype=np.float32)
 
-        self._task_embeddings = None if task_embedding_dim is None else (
-            np.zeros((max_replay_buffer_size, task_embedding_dim), dtype=np.float32))
+        self._tasks = (
+            None
+            if task_dim is None
+            else (np.zeros((max_replay_buffer_size, task_dim), dtype=np.float32))
+        )
 
         assert sampled_seq_len >= 2
         assert sample_weight_baseline >= 0.0
@@ -80,9 +83,15 @@ class SeqReplayBuffer:
         self._top = 0  # trajectory level (first dim in 3D buffer)
         self._size = 0  # trajectory level (first dim in 3D buffer)
 
-    def add_episode(self, observations: np.ndarray, actions: np.ndarray, rewards: np.ndarray,
-                    terminals: np.ndarray, next_observations: np.ndarray,
-                    task_embedding: Optional[np.ndarray] = None) -> None:
+    def add_episode(
+        self,
+        observations: np.ndarray,
+        actions: np.ndarray,
+        rewards: np.ndarray,
+        terminals: np.ndarray,
+        next_observations: np.ndarray,
+        tasks: Optional[np.ndarray] = None,
+    ) -> None:
         """
         NOTE: must add one whole episode/sequence/trajectory,
                         not some partial transitions
@@ -98,8 +107,8 @@ class SeqReplayBuffer:
             == rewards.shape[0]
             == terminals.shape[0]
             == next_observations.shape[0]
-            == terminals.shape[0] if task_embedding is None else task_embedding.shape[0]
-                                                                 >= 2
+            == (terminals.shape[0] if tasks is None else tasks.shape[0])
+            >= 2
         )
 
         seq_len = observations.shape[0]  # L
@@ -113,8 +122,8 @@ class SeqReplayBuffer:
         self._terminals[indices] = terminals
         self._next_observations[indices] = next_observations
 
-        if task_embedding is not None and self._task_embeddings is not None:
-            self._task_embeddings[indices] = task_embedding
+        if tasks is not None and self._tasks is not None:
+            self._tasks[indices] = tasks
 
         self._valid_starts[indices] = self._compute_valid_starts(seq_len)
 
@@ -133,7 +142,7 @@ class SeqReplayBuffer:
         valid_starts *= total_weights / num_valid_starts
 
         # set the num_valid_starts: indices are zeros
-        valid_starts[int(num_valid_starts):] = 0.0
+        valid_starts[int(num_valid_starts) :] = 0.0
 
         return valid_starts
 
@@ -184,7 +193,7 @@ class SeqReplayBuffer:
             rew=self._rewards[indices],
             term=self._terminals[indices],
             obs2=self._next_observations[indices],
-            task=self._task_embeddings[indices],
+            task=self._tasks[indices],
         )
 
     def _generate_masks(self, indices, batch_size):

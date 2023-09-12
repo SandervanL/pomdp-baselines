@@ -12,7 +12,7 @@ from policies.models.actor import CategoricalPolicy, MarkovPolicyBase
 from torchkit.networks import FlattenMlp, Mlp
 import torchkit.pytorch_utils as ptu
 from ..models.recurrent_actor import ActorRnn
-from ..models.recurrent_critic import (CriticRnn)
+from ..models.recurrent_critic import CriticRnn
 
 
 class SACD(RLAlgorithmBase):
@@ -21,12 +21,12 @@ class SACD(RLAlgorithmBase):
     use_target_actor = False
 
     def __init__(
-            self,
-            entropy_alpha: float = 0.1,
-            automatic_entropy_tuning: bool = True,
-            target_entropy: Optional[float] = None,
-            alpha_lr: float = 3e-4,
-            action_dim: Optional[int] = None,
+        self,
+        entropy_alpha: float = 0.1,
+        automatic_entropy_tuning: bool = True,
+        target_entropy: Optional[float] = None,
+        alpha_lr: float = 3e-4,
+        action_dim: Optional[int] = None,
     ):
         super().__init__()
         self.automatic_entropy_tuning: bool = automatic_entropy_tuning
@@ -42,8 +42,9 @@ class SACD(RLAlgorithmBase):
             self.alpha_entropy: float = entropy_alpha
 
     @staticmethod
-    def build_actor(input_size: int, action_dim: int, hidden_sizes: list[int],
-                    **kwargs) -> MarkovPolicyBase:
+    def build_actor(
+        input_size: int, action_dim: int, hidden_sizes: list[int], **kwargs
+    ) -> MarkovPolicyBase:
         return CategoricalPolicy(
             obs_dim=input_size,
             action_dim=action_dim,
@@ -52,9 +53,12 @@ class SACD(RLAlgorithmBase):
         )
 
     @staticmethod
-    def build_critic(hidden_sizes: list[int], input_size: Optional[int] = None,
-                     obs_dim: Optional[int] = None, action_dim: Optional[int] = None) -> tuple[
-        Mlp, Mlp]:
+    def build_critic(
+        hidden_sizes: list[int],
+        input_size: Optional[int] = None,
+        obs_dim: Optional[int] = None,
+        action_dim: Optional[int] = None,
+    ) -> tuple[Mlp, Mlp]:
         assert action_dim is not None
         if obs_dim is not None:
             input_size = obs_dim
@@ -66,11 +70,18 @@ class SACD(RLAlgorithmBase):
         )
         return qf1, qf2
 
-    def select_action(self, actor: nn.Module, observ: ObsType, deterministic: bool,
-                      return_log_prob: bool,
-                      valid_actions: Optional[np.ndarray] = None, **kwargs) -> tuple[
-        Tensor, Tensor, Tensor, Any]:
-        action, prob, log_prob = actor(observ, deterministic, return_log_prob, valid_actions)
+    def select_action(
+        self,
+        actor: nn.Module,
+        observ: ObsType,
+        deterministic: bool,
+        return_log_prob: bool,
+        valid_actions: Optional[np.ndarray] = None,
+        **kwargs
+    ) -> tuple[Tensor, Tensor, Tensor, Any]:
+        action, prob, log_prob = actor(
+            observ, deterministic, return_log_prob, valid_actions
+        )
         return action, prob, log_prob, None
 
     @staticmethod
@@ -79,20 +90,20 @@ class SACD(RLAlgorithmBase):
         return probs, log_probs  # (T+1, B, dim), (T+1, B, dim)
 
     def critic_loss(
-            self,
-            markov_actor: bool,
-            markov_critic: bool,
-            actor: ActorRnn,
-            actor_target: ActorRnn,
-            critic: CriticRnn,
-            critic_target: CriticRnn,
-            observations: Tensor,
-            actions: Tensor,
-            rewards: Tensor,
-            dones: Tensor,
-            gamma: float,
-            next_observations: Optional[Tensor] = None,  # used in markov_critic
-            task_embeddings: Optional[Tensor] = None,
+        self,
+        markov_actor: bool,
+        markov_critic: bool,
+        actor: ActorRnn,
+        actor_target: ActorRnn,
+        critic: CriticRnn,
+        critic_target: CriticRnn,
+        observations: Tensor,
+        actions: Tensor,
+        rewards: Tensor,
+        dones: Tensor,
+        gamma: float,
+        next_observations: Optional[Tensor] = None,  # used in markov_critic
+        tasks: Optional[Tensor] = None,
     ):
         batch_size = actions.shape[1]
         # Q^tar(h(t+1), pi(h(t+1))) + H[pi(h(t+1))]
@@ -103,26 +114,28 @@ class SACD(RLAlgorithmBase):
                     actor, next_observations if markov_critic else observations
                 )
             else:
-                _, _, initial_state = actor.get_initial_info(batch_size, task_embeddings)
+                _, _, initial_state = actor.get_initial_info(batch_size, tasks)
                 # (T+1, B, dim) including reaction to last obs
                 new_probs, new_log_probs = actor(
                     prev_actions=actions,
                     rewards=rewards,
                     observations=next_observations if markov_critic else observations,
-                    initial_state=initial_state
+                    tasks=tasks,
+                    initial_state=initial_state,
                 )
 
             if markov_critic:  # (B, A)
                 next_q1 = critic_target[0](next_observations)
                 next_q2 = critic_target[1](next_observations)
             else:
-                _, _, initial_state = critic_target.get_initial_info(batch_size, task_embeddings)
+                _, _, initial_state = critic_target.get_initial_info(batch_size, tasks)
                 next_q1, next_q2 = critic_target(
                     prev_actions=actions,
                     rewards=rewards,
                     observations=observations,
                     current_actions=new_probs,
-                    initial_state=initial_state
+                    tasks=tasks,
+                    initial_state=initial_state,
                 )  # (T+1, B, A)
 
             min_next_q_target = torch.min(next_q1, next_q2)
@@ -148,12 +161,13 @@ class SACD(RLAlgorithmBase):
 
         else:
             # Q(h(t), a(t)) (T, B, 1)
-            _, _, initial_state = critic.get_initial_info(batch_size, task_embeddings)
+            _, _, initial_state = critic.get_initial_info(batch_size, tasks)
             q1_pred, q2_pred = critic(
                 prev_actions=actions,
                 rewards=rewards,
                 observations=observations,
                 current_actions=actions[1:],
+                tasks=tasks,
                 initial_state=initial_state,
             )  # (T, B, A)
 
@@ -171,41 +185,43 @@ class SACD(RLAlgorithmBase):
         return (q1_pred, q2_pred), q_target
 
     def actor_loss(
-            self,
-            markov_actor: bool,
-            markov_critic: bool,
-            actor: ActorRnn,
-            actor_target: ActorRnn,
-            critic: CriticRnn,
-            critic_target: CriticRnn,
-            observations: Tensor,
-            actions: Optional[Tensor] = None,
-            rewards: Optional[Tensor] = None,
-            task_embeddings: Optional[Tensor] = None
+        self,
+        markov_actor: bool,
+        markov_critic: bool,
+        actor: ActorRnn,
+        actor_target: ActorRnn,
+        critic: CriticRnn,
+        critic_target: CriticRnn,
+        observations: Tensor,
+        actions: Optional[Tensor] = None,
+        rewards: Optional[Tensor] = None,
+        tasks: Optional[Tensor] = None,
     ) -> tuple[Tensor, Tensor]:
         batch_size = actions.shape[1]
         if markov_actor:
             new_probs, log_probs = self.forward_actor(actor, observations)
         else:
-            _, _, initial_state = actor.get_initial_info(batch_size, task_embeddings)
+            _, _, initial_state = actor.get_initial_info(batch_size, tasks)
             new_probs, log_probs = actor(
                 prev_actions=actions,
                 rewards=rewards,
                 observations=observations,
-                initial_state=initial_state
+                tasks=tasks,
+                initial_state=initial_state,
             )  # (T+1, B, A)
 
         if markov_critic:
             q1 = critic[0](observations)
             q2 = critic[1](observations)
         else:
-            _, _, initial_state = critic.get_initial_info(batch_size, task_embeddings)
+            _, _, initial_state = critic.get_initial_info(batch_size, tasks)
             q1, q2 = critic(
                 prev_actions=actions,
                 rewards=rewards,
                 observations=observations,
                 current_actions=new_probs,
-                initial_state=initial_state
+                tasks=tasks,
+                initial_state=initial_state,
             )  # (T+1, B, A)
         min_q_new_actions = torch.min(q1, q2)  # (T+1,B,A)
 
@@ -224,7 +240,7 @@ class SACD(RLAlgorithmBase):
     def update_others(self, current_log_probs: float) -> dict[str, float]:
         if self.automatic_entropy_tuning:
             alpha_entropy_loss = -self.log_alpha_entropy.exp() * (
-                    current_log_probs + self.target_entropy
+                current_log_probs + self.target_entropy
             )
 
             self.alpha_entropy_optim.zero_grad()

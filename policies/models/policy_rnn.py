@@ -34,17 +34,17 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
     Markov_Critic = False
 
     def __init__(
-            self,
-            obs_dim: int,
-            action_dim: int,
-            algo_name: str,
-            rnn_num_layers: int = 1,
-            lr: float = 3e-4,
-            gamma: float = 0.99,
-            tau: float = 5e-3,
-            # pixel obs
-            image_encoder_fn=lambda: None,
-            **kwargs
+        self,
+        obs_dim: int,
+        action_dim: int,
+        algo_name: str,
+        rnn_num_layers: int = 1,
+        lr: float = 3e-4,
+        gamma: float = 0.99,
+        tau: float = 5e-3,
+        # pixel obs
+        image_encoder_fn=lambda: None,
+        **kwargs
     ):
         super().__init__()
 
@@ -54,7 +54,9 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.tau: float = tau
 
         algo_kwargs = kwargs[algo_name] if algo_name in kwargs else {}
-        self.algo: RLAlgorithmBase = RL_ALGORITHMS[algo_name](**algo_kwargs, action_dim=action_dim)
+        self.algo: RLAlgorithmBase = RL_ALGORITHMS[algo_name](
+            **algo_kwargs, action_dim=action_dim
+        )
 
         # Critics
         self.critic = CriticRnn(
@@ -88,14 +90,15 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
     @torch.no_grad()
     def act(
-            self,
-            prev_internal_state: Tensor,
-            prev_action: Tensor,
-            reward: Tensor,
-            obs: Tensor,
-            deterministic: bool = False,
-            return_log_prob: bool = False,
-            valid_actions: Optional[np.ndarray] = None,
+        self,
+        prev_internal_state: tuple[Tensor, Tensor],
+        prev_action: Tensor,
+        reward: Tensor,
+        obs: Tensor,
+        task: Optional[Tensor] = None,
+        deterministic: bool = False,
+        return_log_prob: bool = False,
+        valid_actions: Optional[np.ndarray] = None,
     ):
         prev_action = prev_action.unsqueeze(0)  # (1, B, dim)
         reward = reward.unsqueeze(0)  # (1, B, 1)
@@ -106,6 +109,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             prev_action=prev_action,
             reward=reward,
             obs=obs,
+            task=task,
             deterministic=deterministic,
             return_log_prob=return_log_prob,
             valid_actions=valid_actions,
@@ -113,8 +117,15 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         return current_action_tuple, current_internal_state
 
-    def forward(self, actions: Tensor, rewards: Tensor, observations: Tensor, dones: Tensor,
-                masks: Tensor, task_embeddings: Optional[Tensor] = None) -> dict[str, float]:
+    def forward(
+        self,
+        actions: Tensor,
+        rewards: Tensor,
+        observations: Tensor,
+        dones: Tensor,
+        masks: Tensor,
+        tasks: Optional[Tensor] = None,
+    ) -> dict[str, float]:
         """
         For actions a, rewards r, observations o, dones d: (T+1, B, dim)
                 where for each t in [0, T], take action a[t], then receive reward r[t], done d[t], and next obs o[t]
@@ -125,21 +136,21 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
                 based on Masks (T, B, 1)
         """
         assert (
-                actions.dim()
-                == rewards.dim()
-                == dones.dim()
-                == observations.dim()
-                == masks.dim()
-                == (3 if task_embeddings is None else task_embeddings.dim())
-                == 3
+            actions.dim()
+            == rewards.dim()
+            == dones.dim()
+            == observations.dim()
+            == masks.dim()
+            == (3 if tasks is None else tasks.dim())
+            == 3
         )
         assert (
-                actions.shape[0]
-                == rewards.shape[0]
-                == dones.shape[0]
-                == observations.shape[0]
-                == (dones.shape[0] if task_embeddings is None else task_embeddings.shape[0])
-                == masks.shape[0] + 1
+            actions.shape[0]
+            == rewards.shape[0]
+            == dones.shape[0]
+            == observations.shape[0]
+            == (dones.shape[0] if tasks is None else tasks.shape[0])
+            == masks.shape[0] + 1
         )
         num_valid = torch.clamp(masks.sum(), min=1.0)  # as denominator of loss
 
@@ -155,7 +166,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             actions=actions,
             rewards=rewards,
             dones=dones,
-            task_embeddings=task_embeddings,
+            tasks=tasks,
             gamma=self.gamma,
         )
 
@@ -182,7 +193,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             observations=observations,
             actions=actions,
             rewards=rewards,
-            task_embeddings=task_embeddings,
+            tasks=tasks,
         )
         # masked policy_loss
         policy_loss = (policy_loss * masks).sum() / num_valid

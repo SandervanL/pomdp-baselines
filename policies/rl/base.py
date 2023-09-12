@@ -16,18 +16,22 @@ class RLAlgorithmBase:
         pass
 
     @staticmethod
-    def build_actor(input_size: int, action_dim: int, hidden_sizes: list[int]) -> MarkovPolicyBase:
+    def build_actor(
+        input_size: int, action_dim: int, hidden_sizes: list[int]
+    ) -> MarkovPolicyBase:
         raise NotImplementedError
 
     @staticmethod
-    def build_critic(input_size: int, hidden_sizes: list[int], **kwargs) -> Tuple[Any, Any]:
+    def build_critic(
+        input_size: int, hidden_sizes: list[int], **kwargs
+    ) -> Tuple[Any, Any]:
         """
         return two critics
         """
         raise NotImplementedError
 
     def select_action(
-            self, actor: nn.Module, observ: ObsType, deterministic: bool, **kwargs
+        self, actor: nn.Module, observ: ObsType, deterministic: bool, **kwargs
     ) -> Tuple[Tensor, Tensor, Tensor, Any]:
         """
         actor: defined by build_actor
@@ -37,7 +41,7 @@ class RLAlgorithmBase:
         raise NotImplementedError
 
     @staticmethod
-    def forward_actor(actor, observ) -> Tuple[Any, Any]:
+    def forward_actor(actor: MarkovPolicyBase, observ: Tensor) -> Tuple[Any, Any]:
         """
         actor: defined by build_actor
         observ: (B, dim), could be history embedding
@@ -46,20 +50,20 @@ class RLAlgorithmBase:
         raise NotImplementedError
 
     def critic_loss(
-            self,
-            markov_actor: bool,
-            markov_critic: bool,
-            actor: Module,
-            actor_target: Module,
-            critic: Module,
-            critic_target: Module,
-            observations: Tensor,
-            actions: Tensor,
-            rewards: Tensor,
-            dones: Tensor,
-            gamma: float,
-            next_observations: Optional[Tensor] = None,  # used in markov_critic
-            task_embeddings: Optional[Tensor] = None,
+        self,
+        markov_actor: bool,
+        markov_critic: bool,
+        actor: Module,
+        actor_target: Module,
+        critic: Module,
+        critic_target: Module,
+        observations: Tensor,
+        actions: Tensor,
+        rewards: Tensor,
+        dones: Tensor,
+        gamma: float,
+        next_observations: Optional[Tensor] = None,  # used in markov_critic
+        tasks: Optional[Tensor] = None,
     ) -> Tuple[Tuple[Any, Any], Any]:
         """
         return (q1_pred, q2_pred), q_target
@@ -67,17 +71,17 @@ class RLAlgorithmBase:
         raise NotImplementedError
 
     def actor_loss(
-            self,
-            markov_actor: bool,
-            markov_critic: bool,
-            actor: Module,
-            actor_target: Module,
-            critic: Module,
-            critic_target: Module,
-            observations: Tensor,
-            actions: Tensor,
-            rewards: Tensor,
-            task_embeddings: Optional[Tensor] = None,
+        self,
+        markov_actor: bool,
+        markov_critic: bool,
+        actor: Module,
+        actor_target: Module,
+        critic: Module,
+        critic_target: Module,
+        observations: Tensor,
+        actions: Tensor,
+        rewards: Tensor,
+        tasks: Optional[Tensor] = None,
     ) -> Tuple[Any, Any]:
         """
         return policy_loss, log_probs*

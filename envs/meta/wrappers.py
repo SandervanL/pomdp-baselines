@@ -9,6 +9,7 @@ from gymnasium import spaces
 def mujoco_wrapper(entry_point, **kwargs):
     # Load the environment from its entry point
     from gymnasium.envs.registration import load
+
     env_cls = load(entry_point)
     env = env_cls(**kwargs)
     return env
@@ -16,10 +17,10 @@ def mujoco_wrapper(entry_point, **kwargs):
 
 class VariBadWrapper(gym.Wrapper):
     def __init__(
-            self,
-            env: gym.Env,
-            episodes_per_task: int,
-            oracle: bool = False,  # default no
+        self,
+        env: gym.Env,
+        episodes_per_task: int,
+        oracle: bool = False,  # default no
     ):
         """
         Wrapper, creates a multi-episode (BA)MDP around a one-episode MDP. Automatically deals with
@@ -72,10 +73,12 @@ class VariBadWrapper(gym.Wrapper):
         # and if we train a policy that maximises the return over all episodes
         # we add transitions to the reset start in-between episodes
         try:
-            self.horizon_bamdp = self.episodes_per_task * self.env.spec.max_episode_steps
+            self.horizon_bamdp = (
+                self.episodes_per_task * self.env.spec.max_episode_steps
+            )
         except AttributeError:
             self.horizon_bamdp = (
-                    self.episodes_per_task * self.env.unwrapped.spec.max_episode_steps
+                self.episodes_per_task * self.env.unwrapped.spec.max_episode_steps
             )
 
         # this tells us if we have reached the horizon in the underlying MDP
@@ -89,12 +92,14 @@ class VariBadWrapper(gym.Wrapper):
             state = np.concatenate((state, [float(self.done_mdp)]))
         return state
 
-    def reset(self, task=None, *, seed: Optional[int] = None,
-              options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
+        assert "task" in options
+        task = options["task"]
 
         # reset task -- this sets goal and state -- sets self.env._goal and self.env._state
-        task_reset = self.env.get_wrapper_attr('reset_task')
+        task_reset = self.env.get_wrapper_attr("reset_task")
         task_reset(task)
 
         self.episode_count = 0
@@ -116,15 +121,17 @@ class VariBadWrapper(gym.Wrapper):
             state = np.concatenate((state, [float(self.done_mdp)]))
         return state
 
-    def reset_mdp(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict[str, Any]]:
+    def reset_mdp(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         state, info = self.env.reset(seed=seed, options=options)
         self.done_mdp = False
 
         return self._get_obs(state), info
 
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
-
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if self._normalize_actions:  # from [-1, 1] to [lb, ub]
             action = np.clip(action, -1, 1)  # first clip into [-1, 1]
             lb = self.env.action_space.low
@@ -155,7 +162,9 @@ class VariBadWrapper(gym.Wrapper):
 
 
 class TimeLimitMask(gym.Wrapper):
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         obs, rew, terminated, truncated, info = self.env.step(action)
         if truncated and self.env.spec.max_episode_steps == self.env._elapsed_steps:
             info["bad_transition"] = True

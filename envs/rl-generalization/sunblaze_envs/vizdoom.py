@@ -125,7 +125,7 @@ def sample_things(things, modify_things):
 
 class VizDoomEnvironment(gym.Env):
     metadata = {
-        "render.modes": ["rgb_array"],
+        "render_modes": ["rgb_array"],
         "video.frames_per_second": 35,
     }
     # Scenario definitions. Within each scenario definition, configuration is inherited
@@ -248,8 +248,8 @@ class VizDoomEnvironment(gym.Env):
             valid = True
             for a, b in self.opposite_button_pairs:
                 if (
-                        combination[self.buttons.index(a)]
-                        and combination[self.buttons.index(b)]
+                    combination[self.buttons.index(a)]
+                    and combination[self.buttons.index(b)]
                 ):
                     valid = False
                     break
@@ -287,7 +287,7 @@ class VizDoomEnvironment(gym.Env):
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
-        self._vizdoom.set_seed(seed % 2 ** 32)
+        self._vizdoom.set_seed(seed % 2**32)
         return [seed]
 
     def _get_observation(self):

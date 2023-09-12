@@ -30,7 +30,9 @@ from utils import logger
 
 @dataclass
 class EvaluationResults:
-    returns_per_episode: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
+    returns_per_episode: np.ndarray | dict = field(
+        default_factory=lambda: np.ndarray(0)
+    )
     success_rate: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
     observations: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
     total_steps: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
@@ -44,16 +46,16 @@ class Learner:
 
         self.init_agent(**policy_args)
 
-        self.init_train(**train_args, task_embedding_size=policy_args['task_embedding_size'])
+        self.init_train(**train_args)
 
         self.init_eval(**eval_args)
 
     def init_env(
-            self,
-            env_type: str,
-            env_name: str,
-            num_eval_tasks: Optional[int] = None,
-            **kwargs
+        self,
+        env_type: str,
+        env_name: str,
+        num_eval_tasks: Optional[int] = None,
+        **kwargs,
     ):
         if self.env_type in [
             "pomdp",
@@ -79,11 +81,7 @@ class Learner:
         else:
             raise ValueError
 
-    def _init_env(
-            self,
-            env_type: str,
-            **kwargs
-    ):
+    def _init_env(self, env_type: str, **kwargs):
         # initialize environment
         assert env_type in [
             "meta",
@@ -105,19 +103,23 @@ class Learner:
             assert self.train_env.action_space.__class__.__name__ == "Discrete"
             self.act_dim = self.train_env.action_space.n
             self.act_continuous = False
-        self.obs_dim: int = self.train_env.observation_space.shape[0]  # include 1-dim done
-        logger.log("obs_dim", self.obs_dim, "act_dim", self.act_dim)
+        self.obs_dim: int = self.train_env.observation_space.shape[
+            0
+        ]  # include 1-dim done
+        self.task_dim: Optional[int] = self.train_env.get_wrapper_attr("task_dim")
+        logger.log(
+            "obs_dim", self.obs_dim, "act_dim", self.act_dim, "task_dim", self.task_dim
+        )
 
     def init_agent(
-            self,
-            seq_model: str,
-            separate: bool = True,
-            image_encoder=None,
-            reward_clip: bool = False,
-            task_embedding_size: Optional[int] = None,
-            **kwargs
+        self,
+        seq_model: str,
+        separate: bool = True,
+        image_encoder=None,
+        reward_clip: bool = False,
+        **kwargs,
     ):
-        """ Initialize the agent that is going to be taking actions in the environment."""
+        """Initialize the agent that is going to be taking actions in the environment."""
         # initialize agent
         rnn_encoder_type: Optional[str] = None
         if seq_model == "mlp":
@@ -148,8 +150,8 @@ class Learner:
             encoder=rnn_encoder_type,
             obs_dim=self.obs_dim,
             action_dim=self.act_dim,
+            task_dim=self.task_dim,
             image_encoder_fn=image_encoder_fn,
-            task_embedding_size=task_embedding_size,
             **kwargs,
         ).to(ptu.device)
         logger.log(self.agent)
@@ -157,20 +159,19 @@ class Learner:
         self.reward_clip = reward_clip  # for atari
 
     def init_train(
-            self,
-            buffer_size,
-            batch_size,
-            num_iters,
-            num_init_rollouts_pool,
-            num_rollouts_per_iter,
-            num_updates_per_iter=None,
-            sampled_seq_len=None,
-            sample_weight_baseline=None,
-            buffer_type=None,
-            task_embedding_size=None,
-            **kwargs
+        self,
+        buffer_size,
+        batch_size,
+        num_iters,
+        num_init_rollouts_pool,
+        num_rollouts_per_iter,
+        num_updates_per_iter=None,
+        sampled_seq_len=None,
+        sample_weight_baseline=None,
+        buffer_type=None,
+        **kwargs,
     ):
-        """ Initializes the buffer."""
+        """Initializes the buffer."""
 
         if num_updates_per_iter is None:
             num_updates_per_iter = 1.0
@@ -206,7 +207,7 @@ class Learner:
                 sampled_seq_len=sampled_seq_len,
                 sample_weight_baseline=sample_weight_baseline,
                 observation_type=self.train_env.observation_space.dtype,
-                task_embedding_dim=task_embedding_size
+                task_dim=self.task_dim,
             )
 
         self.batch_size = batch_size
@@ -224,15 +225,14 @@ class Learner:
         )
 
     def init_eval(
-            self,
-            log_interval,
-            save_interval,
-            log_tensorboard,
-            eval_stochastic=False,
-            num_episodes_per_task=1,
-            **kwargs
+        self,
+        log_interval,
+        save_interval,
+        log_tensorboard,
+        eval_stochastic=False,
+        num_episodes_per_task=1,
+        **kwargs,
     ):
-
         self.log_interval = log_interval
         self.save_interval = save_interval
         self.log_tensorboard = log_tensorboard
@@ -259,8 +259,8 @@ class Learner:
         if self.num_init_rollouts_pool > 0:
             logger.log("Collecting initial pool of data..")
             while (
-                    self._n_env_steps_total
-                    < self.num_init_rollouts_pool * self.max_trajectory_len
+                self._n_env_steps_total
+                < self.num_init_rollouts_pool * self.max_trajectory_len
             ):
                 self.collect_rollouts(
                     num_rollouts=1,
@@ -295,16 +295,18 @@ class Learner:
 
             # evaluate and log
             current_num_iters = self._n_env_steps_total // (
-                    self.num_rollouts_per_iter * self.max_trajectory_len
+                self.num_rollouts_per_iter * self.max_trajectory_len
             )
-            if (current_num_iters != last_eval_num_iters
-                    and current_num_iters % self.log_interval == 0):
+            if (
+                current_num_iters != last_eval_num_iters
+                and current_num_iters % self.log_interval == 0
+            ):
                 last_eval_num_iters = current_num_iters
                 perf = self.log()
                 if (
-                        self.save_interval > 0
-                        and self._n_env_steps_total > 0.75 * self.n_env_steps_total
-                        and current_num_iters % self.save_interval == 0
+                    self.save_interval > 0
+                    and self._n_env_steps_total > 0.75 * self.n_env_steps_total
+                    and current_num_iters % self.save_interval == 0
                 ):
                     # save models in later training stage
                     self.save_model(current_num_iters, perf)
@@ -320,9 +322,14 @@ class Learner:
         for idx in range(num_rollouts):
             steps = 0
 
-            if self.env_type == "meta" and self.train_env.get_wrapper_attr('n_tasks') is not None:
-                task = self.train_tasks[np.random.randint(len(self.train_tasks))]
-                obs_numpy, info = self.train_env.reset(task=task, seed=self.seed)
+            if (
+                self.env_type == "meta"
+                and self.train_env.get_wrapper_attr("n_tasks") is not None
+            ):
+                task_index = self.train_tasks[np.random.randint(len(self.train_tasks))]
+                obs_numpy, info = self.train_env.reset(
+                    seed=self.seed, options={"task": task_index}
+                )
             else:
                 obs_numpy, info = self.train_env.reset(seed=self.seed)
 
@@ -333,19 +340,25 @@ class Learner:
 
             if self.agent_arch in [AGENT_ARCHS.Memory, AGENT_ARCHS.Memory_Markov]:
                 # temporary storage
-                obs_list, act_list, rew_list, next_obs_list, term_list, task_list = ([], [], [],
-                                                                                     [], [], [],)
+                obs_list, act_list, rew_list, next_obs_list, term_list, task_list = (
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                    [],
+                )
 
             if self.agent_arch == AGENT_ARCHS.Memory:
                 # get hidden state at timestep=0, None for markov
                 # NOTE: assume initial reward = 0.0 (no need to clip)
                 action, reward, internal_state = self.agent.get_initial_info(
-                    task_embedding=info.get('embedding'),
+                    task=info.get("embedding"),
                 )
 
             while not done_rollout:
                 if random_actions:
-                    action = self.select_random_action(info.get('valid_actions'))
+                    action = self.select_random_action(info.get("valid_actions"))
                 else:
                     # policy takes hidden state as input for memory-based actor,
                     # while takes obs for markov actor
@@ -356,7 +369,8 @@ class Learner:
                             reward=reward,
                             obs=obs,
                             deterministic=False,
-                            valid_actions=info.get('valid_actions')
+                            task=info.get("embedding"),
+                            valid_actions=info.get("valid_actions"),
                         )
                     else:
                         action, _, _, _ = self.agent.act(obs, deterministic=False)
@@ -368,14 +382,16 @@ class Learner:
                 if self.reward_clip and self.env_type == "atari":
                     reward = torch.tanh(reward)
 
-                done_rollout = ptu.get_numpy(terminated[0][0]) == 1.0 or ptu.get_numpy(
-                    truncated[0][0]) == 1.0
+                done_rollout = (
+                    ptu.get_numpy(terminated[0][0]) == 1.0
+                    or ptu.get_numpy(truncated[0][0]) == 1.0
+                )
                 # update statistics
                 steps += 1
 
                 ## determine terminal flag per environment
                 if self.env_type == "meta" and "is_goal_state" in dir(
-                        self.train_env.unwrapped
+                    self.train_env.unwrapped
                 ):
                     # NOTE: following varibad practice: for meta env, even if reaching the goal (term=True),
                     # the episode still continues.
@@ -388,7 +404,7 @@ class Learner:
                     term = (
                         False
                         if "TimeLimit.truncated" in info
-                           or steps >= self.max_trajectory_len
+                        or steps >= self.max_trajectory_len
                         else done_rollout
                     )
 
@@ -414,8 +430,8 @@ class Learner:
                     term_list.append(term)  # bool
                     next_obs_list.append(next_obs)  # (1, dim)
 
-                    if info.get('embedding') is not None:
-                        task_list.append(info.get('embedding'))
+                    if info.get("embedding") is not None:
+                        task_list.append(info.get("embedding"))
 
                 # set: obs <- next_obs
                 obs = next_obs.clone()
@@ -428,15 +444,20 @@ class Learner:
                         act_buffer, dim=-1, keepdims=True
                     )  # (L, 1)
 
-                task_embedding = None if len(task_list) == 0 else (
-                    ptu.get_numpy(torch.cat(task_list, dim=0)))
+                tasks = (
+                    None
+                    if len(task_list) == 0
+                    else (ptu.get_numpy(torch.cat(task_list, dim=0)).reshape(-1, 1))
+                )
                 self.policy_storage.add_episode(
                     observations=ptu.get_numpy(torch.cat(obs_list, dim=0)),  # (L, dim)
                     actions=ptu.get_numpy(act_buffer),  # (L, dim)
                     rewards=ptu.get_numpy(torch.cat(rew_list, dim=0)),  # (L, dim)
                     terminals=np.array(term_list).reshape(-1, 1),  # (L, 1)
-                    next_observations=ptu.get_numpy(torch.cat(next_obs_list, dim=0)),  # (L, dim),
-                    task_embedding=task_embedding,  # (L, dim)
+                    next_observations=ptu.get_numpy(
+                        torch.cat(next_obs_list, dim=0)
+                    ),  # (L, dim),
+                    tasks=tasks,  # (L, dim)
                 )
                 # print(
                 #     f"steps: {steps} term: {term} ret: {torch.cat(rew_list, dim=0).sum().item():.2f}"
@@ -452,8 +473,12 @@ class Learner:
         if not self.act_continuous:
             if valid_actions is not None:
                 valid_action_index = (action.long() % valid_actions.sum(axis=-1)).item()
-                action = torch.Tensor([np.where(valid_actions == 1)[0][valid_action_index]])
-            action = F.one_hot(action.long(), num_classes=self.act_dim).float()  # (1, A)
+                action = torch.Tensor(
+                    [np.where(valid_actions == 1)[0][valid_action_index]]
+                )
+            action = F.one_hot(
+                action.long(), num_classes=self.act_dim
+            ).float()  # (1, A)
 
         return action
 
@@ -487,9 +512,9 @@ class Learner:
         return rl_losses_agg
 
     @torch.no_grad()
-    def evaluate(self, tasks: list | np.ndarray, deterministic: bool = True) -> (
-            EvaluationResults):
-
+    def evaluate(
+        self, tasks: list | np.ndarray, deterministic: bool = True
+    ) -> EvaluationResults:
         num_episodes = self.max_rollouts_per_task  # k
         # max_trajectory_len = k*H
         results = EvaluationResults
@@ -499,10 +524,10 @@ class Learner:
 
         if self.env_type == "meta":
             num_steps_per_episode = self.eval_env.spec.max_episode_steps  # H
-            obs_size = self.eval_env.observation_space.shape[
-                0
-            ]  # original size
-            results.observations = np.zeros((len(tasks), self.max_trajectory_len + 1, obs_size))
+            obs_size = self.eval_env.observation_space.shape[0]  # original size
+            results.observations = np.zeros(
+                (len(tasks), self.max_trajectory_len + 1, obs_size)
+            )
         else:  # pomdp, rmdp, generalize
             num_steps_per_episode = self.eval_env.spec.max_episode_steps
             results.observations = None
@@ -510,8 +535,13 @@ class Learner:
         for task_idx, task in enumerate(tasks):
             step = 0
 
-            if self.env_type == "meta" and self.eval_env.get_wrapper_attr('n_tasks') is not None:
-                obs_numpy, info = self.eval_env.reset(task=task, seed=self.seed + 1)
+            if (
+                self.env_type == "meta"
+                and self.eval_env.get_wrapper_attr("n_tasks") is not None
+            ):
+                obs_numpy, info = self.eval_env.reset(
+                    seed=self.seed + 1, options={"task": task}
+                )
                 obs = ptu.from_numpy(obs_numpy)  # reset task
                 results.observations[task_idx, step, :] = ptu.get_numpy(obs[:obs_size])
             else:
@@ -523,7 +553,8 @@ class Learner:
             if self.agent_arch == AGENT_ARCHS.Memory:
                 # assume initial reward = 0.0
                 action, reward, internal_state = self.agent.get_initial_info(
-                    task_embedding=info.get('embedding'))
+                    task=info.get("embedding")
+                )
 
             for episode_idx in range(num_episodes):
                 running_reward = 0.0
@@ -535,12 +566,14 @@ class Learner:
                             reward=reward,
                             obs=obs,
                             deterministic=deterministic,
-                            valid_actions=info.get('valid_actions')
+                            task=info.get("embedding"),
+                            valid_actions=info.get("valid_actions"),
                         )
                     else:
                         action, _, _, _ = self.agent.act(
-                            obs, deterministic=deterministic,
-                            valid_actions=info.get('valid_actions')
+                            obs,
+                            deterministic=deterministic,
+                            valid_actions=info.get("valid_actions"),
                         )
 
                     # observe reward and next obs
@@ -555,8 +588,10 @@ class Learner:
                         reward = torch.tanh(reward)
 
                     step += 1
-                    done_rollout = ptu.get_numpy(terminated[0][0]) == 1.0 or ptu.get_numpy(
-                        truncated[0][0]) == 1.0
+                    done_rollout = (
+                        ptu.get_numpy(terminated[0][0]) == 1.0
+                        or ptu.get_numpy(truncated[0][0]) == 1.0
+                    )
 
                     if self.env_type == "meta":
                         results.observations[task_idx, step, :] = ptu.get_numpy(
@@ -567,14 +602,14 @@ class Learner:
                     obs = next_obs.clone()
 
                     if (
-                            self.env_type == "meta"
-                            and "is_goal_state" in dir(self.eval_env.unwrapped)
-                            and self.eval_env.unwrapped.is_goal_state()
+                        self.env_type == "meta"
+                        and "is_goal_state" in dir(self.eval_env.unwrapped)
+                        and self.eval_env.unwrapped.is_goal_state()
                     ):
                         results.success_rate[task_idx] = 1.0  # ever once reach
                     elif (
-                            self.env_type == "generalize"
-                            and self.eval_env.unwrapped.is_success()
+                        self.env_type == "generalize"
+                        and self.eval_env.unwrapped.is_success()
                     ):
                         results.success_rate[task_idx] = 1.0  # ever once reach
                     elif "success" in info and info["success"]:  # keytodoor
@@ -609,9 +644,12 @@ class Learner:
     def log_evaluate(self) -> EvaluationResults:
         if self.env_type in ["pomdp", "credit", "atari"]:
             eval_results = self.evaluate(self.eval_tasks)
-            logger.record_tabular("metrics/total_steps_eval", np.mean(eval_results.total_steps))
             logger.record_tabular(
-                "metrics/return_eval_total", np.mean(np.sum(eval_results.total_steps, axis=-1))
+                "metrics/total_steps_eval", np.mean(eval_results.total_steps)
+            )
+            logger.record_tabular(
+                "metrics/return_eval_total",
+                np.mean(np.sum(eval_results.total_steps, axis=-1)),
             )
             logger.record_tabular(
                 "metrics/success_rate_eval", np.mean(eval_results.success_rate)

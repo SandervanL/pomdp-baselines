@@ -29,15 +29,20 @@ class POMDPWrapper(gym.Wrapper):
             self.act_continuous = False
 
     def get_obs(self, state: np.ndarray) -> ObsType:
-        """ Get the partially observed state. """
+        """Get the partially observed state."""
         return state[self.partially_obs_dims].copy()
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
-        state, info = self.env.reset(seed=seed, options=options)  # TODO said 'no kwargs'. Why?
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
+        state, info = self.env.reset(
+            seed=seed, options=options
+        )  # TODO said 'no kwargs'. Why?
         return self.get_obs(state), info
 
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if self.act_continuous:
             # recover the action
             action = np.clip(action, -1, 1)  # first clip into [-1, 1]
@@ -52,8 +57,9 @@ class POMDPWrapper(gym.Wrapper):
 
 
 class POMDPMazeWrapper(gym.Wrapper):
-    """ Partially observable maze environment class. """
-    metadata = {}
+    """Partially observable maze environment class."""
+
+    metadata = {"render_modes": ["human", "rgb_array"], "video.frames_per_second": 3}
 
     def __init__(self, env: Env, window_size: int):
         super().__init__(env)
@@ -63,7 +69,7 @@ class POMDPMazeWrapper(gym.Wrapper):
             low=0,
             high=len(self.unwrapped.maze.objects),
             shape=[(2 * window_size + 1) ** 2],
-            dtype=np.int32
+            dtype=np.int32,
         )
 
     def _get_observation(self, state: np.ndarray) -> np.ndarray:
@@ -74,11 +80,19 @@ class POMDPMazeWrapper(gym.Wrapper):
         """
         agent_position = self.unwrapped.maze.objects.agent.positions[0]
         return state[
-               agent_position[0] - self.window_size: agent_position[0] + self.window_size + 1,
-               agent_position[1] - self.window_size: agent_position[1] + self.window_size + 1
-               ].flatten()
+            agent_position[0]
+            - self.window_size : agent_position[0]
+            + self.window_size
+            + 1,
+            agent_position[1]
+            - self.window_size : agent_position[1]
+            + self.window_size
+            + 1,
+        ].flatten()
 
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         Performs a step in the maze environment.
         Args:
@@ -88,10 +102,17 @@ class POMDPMazeWrapper(gym.Wrapper):
             the observation, the reward, whether the episode is done, and additional information.
         """
         _, reward, done, truncated, info = self.env.step(action)
-        return self._get_observation(info['original_state']), reward, done, truncated, info
+        return (
+            self._get_observation(info["original_state"]),
+            reward,
+            done,
+            truncated,
+            info,
+        )
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
         """
         Resets the environment.
         Args:
@@ -102,7 +123,7 @@ class POMDPMazeWrapper(gym.Wrapper):
             the observation after resetting the environment.
         """
         _, info = self.env.reset(seed=seed, options=options)
-        return self._get_observation(info['original_state']), info
+        return self._get_observation(info["original_state"]), info
 
 
 def main():

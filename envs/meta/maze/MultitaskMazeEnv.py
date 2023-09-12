@@ -1,29 +1,34 @@
 from copy import deepcopy
-from typing import Optional, Any
+from typing import Optional, Any, SupportsFloat
 
 import numpy as np
 import gymnasium as gym
+from gymnasium.core import ActType, ObsType
 
-from envs.meta.maze.MultitaskMaze import MultitaskMaze, load_tasks_file
+from envs.meta.maze.MultitaskMaze import MultitaskMaze, load_tasks_file, MazeTask
 
 
 class MultitaskMazeEnv(gym.Wrapper):
-    """ Multitask maze environment class. """
-    metadata = {}
+    """Multitask maze environment class."""
+
+    metadata = {"render_modes": ["human", "rgb_array"], "video.frames_per_second": 3}
 
     def __init__(self, env: gym.Env, task_file: str, **kwargs):
         super().__init__(env)
 
-        self.tasks = load_tasks_file(task_file)
+        self.tasks: list[MazeTask] = load_tasks_file(task_file)
+        self.task_dim = self.tasks[0].embedding.dim()
 
-        assert hasattr(env.unwrapped, 'maze'), "The environment must have a maze attribute."
+        assert hasattr(
+            env.unwrapped, "maze"
+        ), "The environment must have a maze attribute."
         self.raw_maze = deepcopy(env.unwrapped.maze.maze)
         self.task = None
         self.n_tasks = len(self.tasks)
 
-    def reset(self, *, seed: Optional[int] = None,
-              options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
         """
         Resets the environment.
         Args:
@@ -33,11 +38,23 @@ class MultitaskMazeEnv(gym.Wrapper):
             the observation after resetting the environment.
         """
         obs, info = self.env.reset(seed=seed, options=options)
-        info['embedding'] = self.task.embedding
+        info["embedding"] = self.task.embedding
         return obs, info
 
-    def reset_task(self, task: Optional[int] = None, *, seed: Optional[int] = None,
-                   options: Optional[dict[str, Any]] = None) -> tuple[np.ndarray, dict]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        data = self.env.step(action)
+        data[-1]["embedding"] = self.task.embedding  # Last index is info
+        return data
+
+    def reset_task(
+        self,
+        task: Optional[int] = None,
+        *,
+        seed: Optional[int] = None,
+        options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
         """
         Resets to a new task.
         Args:
@@ -61,6 +78,10 @@ class MultitaskMazeEnv(gym.Wrapper):
 
     def get_all_task_idx(self):
         return range(len(self.tasks))
+
+    def get_all_task_types(self):
+        for index in self.get_all_task_idx():
+            return index, self.tasks[index].task_type
 
     def get_random_task(self, seed: Optional[int] = None):
         rng = np.random.RandomState(seed)

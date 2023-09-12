@@ -94,7 +94,7 @@ class ModelFreeOffPolicy_MLP(nn.Module):
             dones=dones,
             gamma=self.gamma,
             next_observations=next_observations,
-            task_embeddings=task_embeddings
+            tasks=task_embeddings
         )
 
         qf1_loss = F.mse_loss(q1_pred, q_target)  # TD error
@@ -120,7 +120,7 @@ class ModelFreeOffPolicy_MLP(nn.Module):
             critic=(self.qf1, self.qf2),
             critic_target=(self.qf1_target, self.qf2_target),
             observations=observations,
-            task_embeddings=task_embeddings
+            tasks=task_embeddings
         )
         policy_loss = policy_loss.mean()
 
