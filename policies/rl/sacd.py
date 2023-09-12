@@ -12,7 +12,7 @@ from policies.models.actor import CategoricalPolicy, MarkovPolicyBase
 from torchkit.networks import FlattenMlp, Mlp
 import torchkit.pytorch_utils as ptu
 from ..models.recurrent_actor import ActorRnn
-from ..models.recurrent_critic import CriticRnn
+from ..models.recurrent_critic import (CriticRnn)
 
 
 class SACD(RLAlgorithmBase):

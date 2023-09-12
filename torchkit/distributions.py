@@ -107,7 +107,7 @@ class TanhNormal(Distribution):
         self.epsilon = epsilon
 
     def sample_n(self, n, return_pre_tanh_value: bool = False) -> \
-            Union[Tensor, tuple[Tensor, Tensor]]:
+            Tensor | tuple[Tensor, Tensor]:
         z = self.normal.sample_n(n)
         if return_pre_tanh_value:
             return torch.tanh(z), z
@@ -126,14 +126,14 @@ class TanhNormal(Distribution):
             1 - value * value + self.epsilon
         )
 
-    def sample(self, return_pretanh_value: bool = False) -> Union[Tensor, tuple[Tensor, Tensor]]:
+    def sample(self, return_pretanh_value: bool = False) -> Tensor | tuple[Tensor, Tensor]:
         z = self.normal.sample()
         if return_pretanh_value:
             return torch.tanh(z), z
         else:
             return torch.tanh(z)
 
-    def rsample(self, return_pretanh_value: bool = False) -> Union[Tensor, tuple[Tensor, Tensor]]:
+    def rsample(self, return_pretanh_value: bool = False) -> Tensor | tuple[Tensor, Tensor]:
         z = self.normal_mean + self.normal_std * Variable(
             Normal(
                 ptu.zeros(self.normal_mean.size()), ptu.ones(self.normal_std.size())

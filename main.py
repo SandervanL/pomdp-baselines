@@ -13,7 +13,7 @@ from pathlib import Path
 import psutil
 
 from torchkit.pytorch_utils import set_gpu_mode
-from policies.learner import Learner, LEARNER_CLASS
+from policies.learner import LEARNER_CLASS
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("cfg", None, "path to configuration file")

@@ -1,6 +1,8 @@
+import os
 import pickle
 from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 
 import dill
 import numpy as np
@@ -70,7 +72,9 @@ class MultitaskMaze(Maze):
 
 
 def load_tasks_file(filename: str) -> list[MazeTask]:
-    with open(filename, 'rb') as file:
+    main_path = Path(__file__).resolve().parent.parent.parent.parent
+    file_path = os.path.join(main_path, filename)
+    with open(file_path, 'rb') as file:
         tasks = dill.load(file)
 
     for task in tasks:

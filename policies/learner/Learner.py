@@ -30,10 +30,10 @@ from utils import logger
 
 @dataclass
 class EvaluationResults:
-    returns_per_episode: Union[np.ndarray, dict] = field(default_factory=lambda: np.ndarray(0))
-    success_rate: Union[np.ndarray, dict] = field(default_factory=lambda: np.ndarray(0))
-    observations: Union[np.ndarray, dict] = field(default_factory=lambda: np.ndarray(0))
-    total_steps: Union[np.ndarray, dict] = field(default_factory=lambda: np.ndarray(0))
+    returns_per_episode: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
+    success_rate: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
+    observations: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
+    total_steps: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
 
 
 class Learner:
@@ -487,7 +487,7 @@ class Learner:
         return rl_losses_agg
 
     @torch.no_grad()
-    def evaluate(self, tasks: Union[list, np.ndarray], deterministic: bool = True) -> (
+    def evaluate(self, tasks: list | np.ndarray, deterministic: bool = True) -> (
             EvaluationResults):
 
         num_episodes = self.max_rollouts_per_task  # k

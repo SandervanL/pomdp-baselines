@@ -33,19 +33,7 @@ echo $CONDA_PREFIX
 #previous=$(/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/tail -n '+2')
 
 # Call your script
-srun python /home/sajvanleeuwen/code/src/main.py \
-  --algorithm dqn drqn \
-  --exploration epsilon-greedy rnd \
-  --env block0-maze-v0 block1-maze-v0 block2-maze-v0 block3-maze-v0 block4-maze-v0 block6-maze-v0 block8-maze-v0 block12-maze-v0 \
-  --executions 1 \
-  --no-plot \
-  --log-frequency 100 \
-  --no-print-when-plot \
-  --max-episode-length 400 \
-  --max-episodes 1000 \
-  --learning-rate 0.0002 0.0005 0.001 0.002 0.005 0.01 \
-  --epsilon-anneal-time 2500 5000 6000 7500 10000 13000 \
-  --save-dir /home/sajvanleeuwen/logs/blocks_anneal_test
+srun python /home/sajvanleeuwen/pomdp-baselines/main.py --cfg /home/sajvanleeuwen/pomdp-baselines/configs/meta/maze/v/rnn.yml
 
 # the other part of view GPU resource utilization:
 #/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"

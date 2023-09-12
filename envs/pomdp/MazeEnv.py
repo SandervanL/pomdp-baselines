@@ -16,7 +16,7 @@ Position = tuple[int, int]
 class MazeEnv(BaseEnv):
     """ Maze environment class. """
 
-    def __init__(self, maze: list[list[int]], seed: Union[int, Generator, None] = None):
+    def __init__(self, maze: list[list[int]], seed: Optional[int | Generator] = None):
         """
         Initializes the maze environment.
         Args:
