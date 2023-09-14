@@ -233,6 +233,6 @@ def get_feature_extractor(
     return (
         utl.FeatureExtractor(
             task_embedding_size, hidden_size, activation
-        ).requires_grad_(grad),
+        ).requires_grad_(use_grad),
         hidden_size,
     )
