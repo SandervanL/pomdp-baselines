@@ -334,8 +334,10 @@ class Learner:
                 obs_numpy, info = self.train_env.reset(seed=self.seed)
 
             obs = ptu.from_numpy(obs_numpy)  # reset task
-
             obs = obs.reshape(1, obs.shape[-1])
+            task_embedding = (
+                info["embedding"].unsqueeze(0) if "embedding" in info else None
+            )
             done_rollout = False
 
             if self.agent_arch in [AGENT_ARCHS.Memory, AGENT_ARCHS.Memory_Markov]:
@@ -353,7 +355,7 @@ class Learner:
                 # get hidden state at timestep=0, None for markov
                 # NOTE: assume initial reward = 0.0 (no need to clip)
                 action, reward, internal_state = self.agent.get_initial_info(
-                    task=info.get("embedding"),
+                    task=task_embedding
                 )
 
             while not done_rollout:
@@ -369,11 +371,13 @@ class Learner:
                             reward=reward,
                             obs=obs,
                             deterministic=False,
-                            task=info.get("embedding"),
+                            task=task_embedding,
                             valid_actions=info.get("valid_actions"),
                         )
                     else:
-                        action, _, _, _ = self.agent.act(obs, deterministic=False)
+                        action, _, _, _ = self.agent.act(
+                            obs, deterministic=False, task=task_embedding
+                        )
 
                 # observe reward and next obs (B=1, dim)
                 next_obs, reward, terminated, truncated, info = utl.env_step(
@@ -430,8 +434,8 @@ class Learner:
                     term_list.append(term)  # bool
                     next_obs_list.append(next_obs)  # (1, dim)
 
-                    if info.get("embedding") is not None:
-                        task_list.append(info.get("embedding"))
+                    if task_embedding is not None:
+                        task_list.append(task_embedding)
 
                 # set: obs <- next_obs
                 obs = next_obs.clone()
@@ -549,11 +553,13 @@ class Learner:
                 obs = ptu.from_numpy(obs_numpy)  # reset
 
             obs = obs.reshape(1, obs.shape[-1])
-
+            task_embedding = (
+                info["embedding"].unsqueeze(0) if "embedding" in info else None
+            )
             if self.agent_arch == AGENT_ARCHS.Memory:
                 # assume initial reward = 0.0
                 action, reward, internal_state = self.agent.get_initial_info(
-                    task=info.get("embedding")
+                    task=task_embedding
                 )
 
             for episode_idx in range(num_episodes):
@@ -566,13 +572,14 @@ class Learner:
                             reward=reward,
                             obs=obs,
                             deterministic=deterministic,
-                            task=info.get("embedding"),
+                            task=task_embedding,
                             valid_actions=info.get("valid_actions"),
                         )
                     else:
                         action, _, _, _ = self.agent.act(
                             obs,
                             deterministic=deterministic,
+                            task=task_embedding,
                             valid_actions=info.get("valid_actions"),
                         )
 

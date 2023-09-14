@@ -34,7 +34,7 @@ previous=$(/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utili
 
 # Calculate current paths
 source_file_path=$(readlink -f ${BASH_SOURCE[0]})
-dir_path=$(dirname ${the_source})
+dir_path=$(dirname ${source_file_path})
 project_path=$dir_path/..
 
 # Call your script

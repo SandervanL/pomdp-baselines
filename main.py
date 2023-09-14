@@ -91,10 +91,7 @@ else:
     env_name = v["env"]["env_name"]
 exp_id += f"{env_type}/{env_name}/"
 
-if "oracle" in v["env"] and v["env"]["oracle"] == True:
-    oracle = True
-else:
-    oracle = False
+oracle = "oracle" in v["env"] and v["env"]["oracle"] == True
 
 if seq_model == "mlp":
     if oracle:
@@ -124,7 +121,8 @@ if algo in ["sac", "sacd"]:
     elif "target_entropy" in v["policy"]:
         exp_id += f"ent-{v['policy'][algo]['target_entropy']}/"
 
-exp_id += f"gamma-{v['policy']['gamma']}/"
+# exp_id += f"gamma-{v['policy']['gamma']}/"
+exp_id += f"emb-{v['policy']['embedding_grad']}/"
 
 if seq_model != "mlp":
     exp_id += f"len-{v['train']['sampled_seq_len']}/bs-{v['train']['batch_size']}/"

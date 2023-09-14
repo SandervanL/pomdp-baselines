@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="run-obs-no-grad"
+#SBATCH --job-name="obs-no-grad"
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1	          # this is equivalent to number of NODES
 ##SBATCH --gpus-per-task=4  # comment out if not needing GPUs
@@ -23,19 +23,20 @@ source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate rl-lang-11
 
 # I like to print the activated env and its location, to see that it loaded what I expect it to:
-echo $CONDA_DEFAULT_ENV
-echo $CONDA_PREFIX
+echo "Conda Default Env: ${CONDA_DEFAULT_ENV}"
+echo "Conda Prefix: ${CONDA_PREFIX}"
 
 # Print the GPU-utilization output, to see that we get the resources we expect (only relevant when GPUs are used):
 #/usr/bin/nvidia-smi
 
 # to view GPU resource utilization at the end of the job, setup:
 #previous=$(/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/tail -n '+2')
-
-# Calculate current paths
-source_file_path=$(readlink -f ${BASH_SOURCE[0]})
-dir_path=$(dirname ${the_source})
+source_file_path=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}' | head -n 1)
+echo "Source_file_path: ${source_file_path}"
+dir_path=$(dirname ${source_file_path})
+echo "dir path: ${dir_path}"
 project_path=$dir_path/..
+echo "project path: ${project_path}"
 
 # Call your script
 srun python $project_path/main.py --cfg $project_path/configs/meta/maze/obs-no-grad/rnn.yml

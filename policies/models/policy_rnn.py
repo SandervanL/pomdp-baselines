@@ -103,6 +103,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         prev_action = prev_action.unsqueeze(0)  # (1, B, dim)
         reward = reward.unsqueeze(0)  # (1, B, 1)
         obs = obs.unsqueeze(0)  # (1, B, dim)
+        task = task.unsqueeze(0)  # (1, B, dim)
 
         current_action_tuple, current_internal_state = self.actor.act(
             prev_internal_state=prev_internal_state,
