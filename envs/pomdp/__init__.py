@@ -52,88 +52,160 @@ register(
     max_episode_steps=200,
 )
 
-register(
-    "LunarLander-F-v0",
-    entry_point="envs.pomdp.wrappers:POMDPWrapper",
-    kwargs=dict(
-        env=gym.make("LunarLander-v2"), partially_obs_dims=list(range(8))
-    ),  # angle & velocity
-    max_episode_steps=1000,  # reward threshold for solving the task: 200
-)
-
-register(
-    "LunarLander-P-v0",
-    entry_point="envs.pomdp.wrappers:POMDPWrapper",
-    kwargs=dict(env=gym.make("LunarLander-v2"), partially_obs_dims=[0, 1, 4, 6, 7]),
-    max_episode_steps=1000,
-)
-
-register(
-    "LunarLander-V-v0",
-    entry_point="envs.pomdp.wrappers:POMDPWrapper",
-    kwargs=dict(env=gym.make("LunarLander-v2"), partially_obs_dims=[2, 3, 5, 6, 7]),
-    max_episode_steps=1000,
-)
+# register(
+#     "LunarLander-F-v0",
+#     entry_point="envs.pomdp.wrappers:POMDPWrapper",
+#     kwargs=dict(
+#         env=gym.make("LunarLander-v2"), partially_obs_dims=list(range(8))
+#     ),  # angle & velocity
+#     max_episode_steps=1000,  # reward threshold for solving the task: 200
+# )
+#
+# register(
+#     "LunarLander-P-v0",
+#     entry_point="envs.pomdp.wrappers:POMDPWrapper",
+#     kwargs=dict(env=gym.make("LunarLander-v2"), partially_obs_dims=[0, 1, 4, 6, 7]),
+#     max_episode_steps=1000,
+# )
+#
+# register(
+#     "LunarLander-V-v0",
+#     entry_point="envs.pomdp.wrappers:POMDPWrapper",
+#     kwargs=dict(env=gym.make("LunarLander-v2"), partially_obs_dims=[2, 3, 5, 6, 7]),
+#     max_episode_steps=1000,
+# )
 
 MAX_MAZE_STEPS = 1000
-register('corridor-maze-v0', entry_point='environments.MazeEnvs:CorridorMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('u-maze-v0', entry_point='environments.MazeEnvs:UMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('t-maze-v0', entry_point='environments.MazeEnvs:TMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
+register(
+    "corridor-maze-v0",
+    entry_point="environments.MazeEnvs:CorridorMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "u-maze-v0",
+    entry_point="environments.MazeEnvs:UMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "t-maze-v0",
+    entry_point="environments.MazeEnvs:TMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
-register('block-maze-v0', entry_point='envs.pomdp.MazeEnvs:BlockMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block0-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block0MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block1-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block1MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block2-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block2MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block3-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block3MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block4-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block4MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block6-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block6MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block8-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block8MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('block12-maze-v0', entry_point='envs.pomdp.MazeEnvs:Block12MazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
+register(
+    "block-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:BlockMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block0-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block0MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block1-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block1MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block2-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block2MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block3-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block3MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block4-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block4MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block6-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block6MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block8-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block8MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "block12-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:Block12MazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
-register('test-t-fully-v0', entry_point='envs.pomdp.MazeEnvs:TestTMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('test-bend-fully-v0', entry_point='envs.pomdp.MazeEnvs:TestBendMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('test-cross-fully-v0', entry_point='envs.pomdp.MazeEnvs:TestCrossMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
+register(
+    "test-t-fully-v0",
+    entry_point="envs.pomdp.MazeEnvs:TestTMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "test-bend-fully-v0",
+    entry_point="envs.pomdp.MazeEnvs:TestBendMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "test-cross-fully-v0",
+    entry_point="envs.pomdp.MazeEnvs:TestCrossMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
-register('test-t-partial-v0',
-         entry_point='envs.pomdp.MazeEnvs:TestTPartialMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('test-bend-partial-v0',
-         entry_point='envs.pomdp.MazeEnvs:TestBendPartialMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('test-cross-partial-v0',
-         entry_point='envs.pomdp.MazeEnvs:TestCrossPartialMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
+register(
+    "test-t-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:TestTPartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "test-bend-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:TestBendPartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "test-cross-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:TestCrossPartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
-register('full-maze-without-traps-v0',
-         entry_point='envs.pomdp.MazeEnvs:FullMazeWithoutTrapsEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('full-maze-v0', entry_point='envs.pomdp.MazeEnvs.MazeEnvs:FullMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
+register(
+    "full-maze-without-traps-v0",
+    entry_point="envs.pomdp.MazeEnvs:FullMazeWithoutTrapsEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "full-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs.MazeEnvs:FullMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
-register('full-maze-without-traps-partial-v0',
-         entry_point='envs.pomdp.MazeEnvs:FullMazeWithoutTrapsPartialEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('full-maze-partial-v0', entry_point='envs.pomdp.MazeEnvs.MazeEnvs:FullMazePartialEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('item-maze-v0', entry_point='envs.pomdp.MazeEnvs:ItemMazeEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
-register('item-maze-partial-v0', entry_point='envs.pomdp.MazeEnvs:ItemMazePartialEnv',
-         max_episode_steps=MAX_MAZE_STEPS)
+register(
+    "full-maze-without-traps-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:FullMazeWithoutTrapsPartialEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "full-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs.MazeEnvs:FullMazePartialEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "item-maze-v0",
+    entry_point="envs.pomdp.MazeEnvs:ItemMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "item-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:ItemMazePartialEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "double-blocked-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlockedPartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
 ### Below are pybullect (roboschool) environments, using BLT for Bullet
 # import pybullet_envs
