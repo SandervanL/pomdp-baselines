@@ -1,0 +1,64 @@
+seed: 73
+cuda: 0 # use_gpu
+env:
+  env_type: meta
+  env_name: item-maze-meta-partial-v0
+  task_file: configs/meta/maze/single_embeddings.pkl
+  max_rollouts_per_task: 1
+  task_selection: even # "even" evaluate on same tasks as train,
+                       # "random" make random train/eval split
+                       # "random-class" make random train/eval split within each class
+
+
+  num_eval_tasks: 6 # num of eval episodes
+  num_train_tasks: 36 # num of train tasks
+
+train:
+  # 50*200 = 10k steps
+  num_iters: 3000 # number meta-training iterates
+  num_init_rollouts_pool: 5 # before training
+  num_rollouts_per_iter: 25
+
+  num_updates_per_iter: 1
+  # buffer params
+  buffer_size: 1e6
+  batch_size: 128 # to tune based on sampled_seq_len
+  sampled_seq_len: -1 # -1 is all, or positive integer
+  sample_weight_baseline: 0.0
+
+eval:
+  eval_stochastic: false # also eval stochastic policy
+  log_interval: 1 # num of iters
+  save_interval: -1
+  log_tensorboard: true
+
+policy:
+  separate: True
+  seq_model: lstm # [lstm, gru]
+  algo_name: sacd # only support sac-discrete
+
+  action_embedding_size: 8 # no action input
+  observ_embedding_size: 32
+  reward_embedding_size: 8
+  embedding_obs_init: 0  # 0 for not appending task, 1: append to observation, 2: append to state proxy, 3: both
+  embedding_rnn_init: 0 # 0 creates zero embedding for cell & state, 1: hidden state, 2: cell state, 3: both
+  rnn_hidden_size: 128
+
+  #  "no" returns an empty tensor,
+  #  "directly" returns the same tensor,
+  #  "grad" returns a linear layer with relu that can be trained
+  #  "no-grad" returns a linear layer without relu that cannot be trained.
+  embedding_grad: "no" # Whether to train the linear layer that transforms the linear embedding to the rnn hidden state
+
+  dqn_layers: [ 128, 128 ]
+  policy_layers: [ 128, 128 ]
+  lr: 0.0003
+  gamma: 0.9
+  tau: 0.005
+
+  sacd:
+    entropy_alpha: null
+    automatic_entropy_tuning: true
+    target_entropy: 0.7 # the ratio: target_entropy = ratio * log(|A|)
+    alpha_lr: 0.0003
+
