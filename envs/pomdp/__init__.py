@@ -109,7 +109,13 @@ _register_maze("test-cross-fully-v0", mazes.TEST_CROSS_MAP)
 _register_maze("full-maze-without-traps-v0", mazes.FULL_MAZE_WITHOUT_TRAPS)
 _register_maze("full-maze-v0", mazes.FULL_MAZE)
 _register_maze("double-maze-v0", mazes.DOUBLE_MAP)
-_register_maze("double-blocked-maze-v0", mazes.DOUBLE_MAP_BLOCKED)
+_register_maze("double-blocked-1-maze-v0", mazes.DOUBLE_MAP_BLOCKED_1)
+_register_maze("double-blocked-2-maze-v0", mazes.DOUBLE_MAP_BLOCKED_2)
+_register_maze("double-blocked-3-maze-v0", mazes.DOUBLE_MAP_BLOCKED_3)
+_register_maze("double-blocked-4-maze-v0", mazes.DOUBLE_MAP_BLOCKED_4)
+_register_maze("double-blocked-5-maze-v0", mazes.DOUBLE_MAP_BLOCKED_5)
+_register_maze("double-blocked-6-maze-v0", mazes.DOUBLE_MAP_BLOCKED_6)
+_register_maze("double-blocked-7-maze-v0", mazes.DOUBLE_MAP_BLOCKED_7)
 
 
 def _register_partial_maze(name: str, original_maze: str):
@@ -129,7 +135,13 @@ _register_partial_maze(
 )
 _register_partial_maze("full-maze-partial-v0", "full-maze-v0")
 _register_partial_maze("double-maze-partial-v0", "double-maze-v0")
-_register_partial_maze("double-blocked-maze-partial-v0", "double-blocked-maze-v0")
+_register_partial_maze("double-blocked-1-maze-partial-v0", "double-blocked-1-maze-v0")
+_register_partial_maze("double-blocked-2-maze-partial-v0", "double-blocked-2-maze-v0")
+_register_partial_maze("double-blocked-3-maze-partial-v0", "double-blocked-3-maze-v0")
+_register_partial_maze("double-blocked-4-maze-partial-v0", "double-blocked-4-maze-v0")
+_register_partial_maze("double-blocked-5-maze-partial-v0", "double-blocked-5-maze-v0")
+_register_partial_maze("double-blocked-6-maze-partial-v0", "double-blocked-6-maze-v0")
+_register_partial_maze("double-blocked-7-maze-partial-v0", "double-blocked-7-maze-v0")
 
 ### Below are pybullect (roboschool) environments, using BLT for Bullet
 # import pybullet_envs
