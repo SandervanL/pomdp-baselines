@@ -2,6 +2,8 @@ import os
 import sys
 import time
 
+import wandb
+
 t0 = time.time()
 import socket
 import numpy as np
@@ -122,7 +124,10 @@ if algo in ["sac", "sacd"]:
         exp_id += f"ent-{v['policy'][algo]['target_entropy']}/"
 
 # exp_id += f"gamma-{v['policy']['gamma']}/"
-exp_id += f"emb-{v['policy']['embedding_grad']}/"
+if v["env"]["env_type"] == "meta":
+    exp_id += f"emb-{v['policy']['embedding_grad']}/"
+    exp_id += f"rnn-{v['policy']['embedding_rnn_init']}/"
+    exp_id += f"rnn-{v['policy']['embedding_obs_init']}/"
 
 if seq_model != "mlp":
     exp_id += f"len-{v['train']['sampled_seq_len']}/bs-{v['train']['batch_size']}/"
@@ -164,5 +169,18 @@ learner = learner_class(
 logger.log(
     f"total RAM usage: {psutil.Process().memory_info().rss / 1024 ** 3 :.2f} GB\n"
 )
+
+# wandb.init(
+#     project="Language Assistance",
+#     config={
+#         "env": v["env"]["env_name"],
+#         "env_type": v["env"]["env_type"],
+#         "grad": v["policy"]["embedding_grad"],
+#         "rnn_init": v["policy"]["embedding_rnn_init"],
+#         "obs_init": v["policy"]["embedding_obs_init"],
+#         "task_file": v["env"]["task_file"],
+#         "task_selection": v["env"]["task_selection"],
+#     },
+# )
 
 learner.train()

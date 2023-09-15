@@ -191,15 +191,18 @@ class BaseRnn(Module, metaclass=abc.ABCMeta):
             cell_state = ptu.zeros(
                 (self.num_layers, batch_size, self.rnn_hidden_size), requires_grad=False
             ).float()
-            hidden_embedding = self.task_hidden_embedder(task).repeat(
-                self.num_layers, 1, 1
-            )
-            if hidden_embedding.shape[2] > 0:
-                hidden_state = hidden_embedding
+            if task is not None:
+                hidden_embedding = self.task_hidden_embedder(task).repeat(
+                    self.num_layers, 1, 1
+                )
+                if hidden_embedding.shape[2] > 0:
+                    hidden_state = hidden_embedding
 
-            cell_embedding = self.task_cell_embedder(task).repeat(self.num_layers, 1, 1)
-            if cell_embedding.shape[2] > 0:
-                cell_state = cell_embedding
+                cell_embedding = self.task_cell_embedder(task).repeat(
+                    self.num_layers, 1, 1
+                )
+                if cell_embedding.shape[2] > 0:
+                    cell_state = cell_embedding
             internal_state = (hidden_state, cell_state)
 
         return prev_action, reward, internal_state

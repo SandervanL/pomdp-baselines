@@ -103,7 +103,8 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         prev_action = prev_action.unsqueeze(0)  # (1, B, dim)
         reward = reward.unsqueeze(0)  # (1, B, 1)
         obs = obs.unsqueeze(0)  # (1, B, dim)
-        task = task.unsqueeze(0)  # (1, B, dim)
+        if task is not None:
+            task = task.unsqueeze(0)  # (1, B, dim)
 
         current_action_tuple, current_internal_state = self.actor.act(
             prev_internal_state=prev_internal_state,
@@ -263,6 +264,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         dones = torch.cat(
             (ptu.zeros((1, batch_size, 1)).float(), dones), dim=0
         )  # (T+1, B, dim)
-        tasks = torch.cat((tasks[0, :, :].unsqueeze(0), tasks))  # (T+1, B, dim)
+        if tasks is not None:
+            tasks = torch.cat((tasks[0, :, :].unsqueeze(0), tasks))  # (T+1, B, dim)
 
         return self.forward(actions, rewards, observations, dones, masks, tasks)

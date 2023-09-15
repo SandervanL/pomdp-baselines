@@ -7,6 +7,7 @@ from typing import Optional, Union
 
 import numpy as np
 import torch
+import wandb
 from torch import Tensor
 from torch.nn import functional as F
 import gymnasium as gym
@@ -62,7 +63,8 @@ class Learner:
             "credit",
         ]:  # pomdp/mdp task, using pomdp wrapper
             import envs.pomdp
-            import envs.credit_assign
+
+            # import envs.credit_assign
 
             assert num_eval_tasks > 0
             self.train_env = gym.make(env_name)
@@ -106,7 +108,10 @@ class Learner:
         self.obs_dim: int = self.train_env.observation_space.shape[
             0
         ]  # include 1-dim done
-        self.task_dim: Optional[int] = self.train_env.get_wrapper_attr("task_dim")
+        try:
+            self.task_dim: Optional[int] = self.train_env.get_wrapper_attr("task_dim")
+        except AttributeError:
+            self.task_dim: Optional[int] = None
         logger.log(
             "obs_dim", self.obs_dim, "act_dim", self.act_dim, "task_dim", self.task_dim
         )
@@ -697,6 +702,9 @@ class Learner:
         )
         self._n_env_steps_total_last = self._n_env_steps_total
         self._start_time_last = time.time()
+
+        if wandb.run is not None:
+            wandb.log(logger.getkvs())
 
         logger.dump_tabular()
 

@@ -187,14 +187,16 @@ class SeqReplayBuffer:
         return np.random.choice(valid_starts_indices, size=batch_size, p=sample_weights)
 
     def _sample_data(self, indices):
-        return dict(
+        result = dict(
             obs=self._observations[indices],
             act=self._actions[indices],
             rew=self._rewards[indices],
             term=self._terminals[indices],
             obs2=self._next_observations[indices],
-            task=self._tasks[indices],
         )
+        if self._tasks is not None:
+            result["task"] = self._tasks[indices]
+        return result
 
     def _generate_masks(self, indices, batch_size):
         """

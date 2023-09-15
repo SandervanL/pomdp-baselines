@@ -87,7 +87,8 @@ class CriticRnn(BaseRnn):
             == observations.dim()
             == current_actions.dim()
             == tasks.dim()
-            == 3
+            if tasks is not None
+            else 3 == 3
         )
         assert prev_actions.shape[0] == rewards.shape[0] == observations.shape[0]
 

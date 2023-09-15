@@ -14,7 +14,7 @@ Position = tuple[int, int]
 
 
 class MazeEnv(BaseEnv):
-    """ Maze environment class. """
+    """Maze environment class."""
 
     def __init__(self, maze: list[list[int]], seed: Optional[int | Generator] = None):
         """
@@ -34,11 +34,13 @@ class MazeEnv(BaseEnv):
             low=0,
             high=len(self.maze.objects),
             shape=[maze_size[0] * maze_size[1]],
-            dtype=np.int32
+            dtype=np.int32,
         )
         self.action_space = Discrete(len(self.motions), seed=seed)
 
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         Performs a step in the maze environment.
         Args:
@@ -54,30 +56,33 @@ class MazeEnv(BaseEnv):
 
         motion = self.motions[action]
         current_position = self.maze.objects.agent.positions[0]
-        new_position: Position = current_position[0] + motion[0], current_position[1] + motion[1]
+        new_position: Position = (
+            current_position[0] + motion[0],
+            current_position[1] + motion[1],
+        )
         valid = self._are_valid([new_position])[0]
 
         if valid:
             self.maze.objects.agent.positions = [new_position]
         next_state = self.maze.to_value()
-        info = {'valid_actions': self._get_valid_actions()}
+        info = {"valid_actions": self._get_valid_actions()}
 
         if self.is_goal_state():
             reward = +100
-            info['success'] = done = True
+            info["success"] = done = True
         elif not valid:
             reward = -1  # -1
-            git
             done = False
         else:
             reward = -0.01
             done = False
 
-        info['original_state'] = next_state
+        info["original_state"] = next_state
         return next_state.flatten(), reward, done, False, info
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
         """
         Resets the environment.
         Args:
@@ -90,8 +95,8 @@ class MazeEnv(BaseEnv):
         self.maze.objects.agent.positions = self.start_position
         self.maze.objects.goal.positions = self.goal_positions
         next_state = self.maze.to_value()
-        info['valid_actions'] = self._get_valid_actions()
-        info['original_state'] = next_state
+        info["valid_actions"] = self._get_valid_actions()
+        info["original_state"] = next_state
         return next_state.flatten(), info
 
     def _are_valid(self, positions: list[Position]) -> list[bool]:
@@ -109,7 +114,9 @@ class MazeEnv(BaseEnv):
         # Pycharm type annotator is not convinced that 'position' is of type Position, but it is.
         for index, position in enumerate(positions):
             non_negative = position[0] >= 0 and position[1] >= 0
-            within_edge = position[0] < self.maze.size[0] and position[1] < self.maze.size[1]
+            within_edge = (
+                position[0] < self.maze.size[0] and position[1] < self.maze.size[1]
+            )
             passable = not is_impassable_maze[position[0]][position[1]]
             result[index] = non_negative and within_edge and passable
 
@@ -124,7 +131,10 @@ class MazeEnv(BaseEnv):
         new_positions: list[Position] = [(0, 0)] * len(self.motions)
         current_pos = self.maze.objects.agent.positions[0]
         for action, motion in enumerate(self.motions):
-            new_positions[action] = current_pos[0] + motion[0], current_pos[1] + motion[1]
+            new_positions[action] = (
+                current_pos[0] + motion[0],
+                current_pos[1] + motion[1],
+            )
 
         valid_actions = self._are_valid(new_positions)
         return np.array(valid_actions, dtype=np.uint8)
