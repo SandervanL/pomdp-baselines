@@ -1,0 +1,13 @@
+Collecting simcse
+  Using cached simcse-0.4.tar.gz (18 kB)
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Collecting tqdm (from simcse)
+  Obtaining dependency information for tqdm from https://files.pythonhosted.org/packages/00/e5/f12a80907d0884e6dff9c16d0c0114d81b8cd07dc3ae54c5e962cc83037e/tqdm-4.66.1-py3-none-any.whl.metadata
+  Using cached tqdm-4.66.1-py3-none-any.whl.metadata (57 kB)
+Requirement already satisfied: scikit-learn in c:\users\sander\documents\courses\2022-2023\afstuderen\project\venv11\lib\site-packages (from simcse) (1.3.0)
+Collecting scipy<1.6,>=1.5.4 (from simcse)
+  Using cached scipy-1.5.4.tar.gz (25.2 MB)
+  Installing build dependencies: started
+  Installing build dependencies: still running...
+  Installing build dependencies: finished with status 'error'
