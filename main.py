@@ -171,7 +171,7 @@ logger.log(
 )
 
 wandb.init(
-    project="Language Assistance",
+    project="Distance Test",
     config={
         "env": v["env"]["env_name"],
         # "env_type": v["env"]["env_type"],
@@ -184,3 +184,4 @@ wandb.init(
 )
 
 learner.train()
+wandb.finish()

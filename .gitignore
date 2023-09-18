@@ -21,3 +21,5 @@ venv/
 .idea/
 *.zip
 .env
+
+wandb/

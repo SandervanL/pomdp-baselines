@@ -13,6 +13,8 @@ def build_classifier(input_dim: int, output_dim: int, hidden_dim: int):
         nn.ReLU(),
         nn.Linear(hidden_dim, hidden_dim),
         nn.ReLU(),
+        nn.Linear(hidden_dim, hidden_dim),
+        nn.ReLU(),
         nn.Linear(hidden_dim, output_dim),
     )
 
@@ -68,14 +70,19 @@ def main(input_file: str):
         #     }
         # )
         print(
-            f"Epoch {epoch} train loss: {train_loss}, accuracy: {train_accuracy}, eval loss: {eval_loss}, accuracy: {eval_accuracy}"
+            f"Epoch {epoch} train loss: {train_loss}, accuracy: {train_accuracy},"
+            f" eval loss: {eval_loss}, accuracy: {eval_accuracy}"
         )
 
 
 if __name__ == "__main__":
-    for i in range(10):
-        main("light_heavy_simcse.dill")
-        wandb.finish()
-    for i in range(10):
-        main("light_heavy_word2vec.dill")
-        wandb.finish()
+    files = [
+        "data/light_vs_heavy/sentences_simcse.dill",
+        # "data/light_vs_heavy/sentences_word2vec.dill",
+        # "data/light_vs_heavy/words_simcse.dill",
+        # "data/light_vs_heavy/words_word2vec.dill",
+    ]
+    for file in files:
+        for _ in range(10):
+            main(file)
+            wandb.finish()

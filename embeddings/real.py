@@ -1,7 +1,9 @@
 import json
+import re
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+import numpy as np
 import torch
 from torch import Tensor
 import dill
@@ -19,21 +21,21 @@ class MazeTask:
 
 
 def create_embeddings(
-    inputs: tuple[list[str], list[str]], embedder: Callable[[str], Tensor]
+    inputs: tuple[list[tuple[str, str]], list[tuple[str, str]]],
+    embedder: Callable[[str], Tensor],
 ) -> list[MazeTask]:
-    tasks = []
-    for sentence in inputs[0]:
-        tasks.append(
-            MazeTask(
-                embedder(sentence.strip().lower()),
-                False,
-                False,
-                0,
-            )
+    tasks = [
+        MazeTask(
+            embedder(sentence.strip().lower()),
+            False,
+            index == 0,
+            index,
+            word.strip().lower(),
         )
-
-    for sentence in inputs[1]:
-        tasks.append(MazeTask(embedder(sentence.strip().lower()), False, True, 1))
+        for index, sentence_list in enumerate(inputs)
+        for sentence, word in sentence_list
+        if len(sentence.strip()) > 0
+    ]
 
     return [task for task in tasks if task.embedding is not None]
 
@@ -58,31 +60,41 @@ def get_word2vec_embedding(sentence: str) -> Optional[Tensor]:
     global vectors
     import gensim.downloader
 
+    print(f"Sentence: '{sentence}'")
+
     if vectors is None:
         vectors = gensim.downloader.load("word2vec-google-news-300")
 
-    embed_sum: Optional[Tensor] = None
-    words = [word for word in sentence.split(" ")]
+    embed_sum: np.ndarray = np.zeros_like(vectors[0])
+    filtered_sentence = re.sub(r"[.,!?\'\"()-]", " ", sentence)
+    filtered_sentence = re.sub(r"[^a-zA-Z ]", "", filtered_sentence)
+    words = [
+        word
+        for word in filtered_sentence.split(" ")
+        if len(word) > 1 and word not in ["to", "and", "of"]
+    ]
     length = 0
     for word in words:
-        if word in vectors.key_to_index:
+        if word in vectors and not np.any(np.isinf(vectors[word])):
             length += 1
-            if embed_sum is None:
-                embed_sum = vectors.vectors[vectors.key_to_index[word]]
-            else:
-                embed_sum += vectors.vectors[vectors.key_to_index[word]]
+            embed_sum += vectors[word]
         else:
-            print(f"Word {word} not in word2vec")
+            print(f"Word '{word}' not in word2vec or infinite")
 
     if length == 0:
-        print(f"Sentence {sentence} has no words in word2vec")
+        print(f"Sentence '{sentence}' has no words in word2vec")
         return None
-    return torch.from_numpy(embed_sum / length)
+
+    result = torch.from_numpy(embed_sum / length)
+    if torch.where(result == torch.inf)[0].shape[0] > 0:
+        print(f"Inf in {result}")
+        return None
+    return result
 
 
 def main(input_file: str, output_file: str, use_word2vec: bool = False):
     with open(input_file, "r") as file:
-        inputs: input_file = json.load(file)
+        inputs: tuple[list[tuple[str, str]], list[tuple[str, str]]] = json.load(file)
 
     embedder = get_word2vec_embedding if use_word2vec else get_simcse_embedding
     tasks = create_embeddings(inputs, embedder)
@@ -91,5 +103,5 @@ def main(input_file: str, output_file: str, use_word2vec: bool = False):
 
 
 if __name__ == "__main__":
-    main("light_heavy.json", "light_heavy_word2vec.dill", True)
-    main("light_heavy.json", "light_heavy_simcse.dill", False)
+    # main("light_heavy_sentences.json", "light_heavy_word2vec_sentences.dill", True)
+    main("light_heavy_sentences.json", "light_heavy_simcse_sentences.dill", False)
