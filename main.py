@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from datetime import datetime
 
 # import wandb
 
@@ -37,7 +38,8 @@ flags.DEFINE_boolean("debug", False, "debug mode")
 
 flags.FLAGS(sys.argv)
 yaml = YAML()
-v = yaml.load(open(FLAGS.cfg))
+with open(FLAGS.cfg) as file:
+    v = yaml.load(file)
 
 # overwrite config params
 if FLAGS.env is not None:
@@ -142,7 +144,8 @@ if seq_model != "mlp":
     exp_id += policy_input_str + "/"
 
 os.makedirs(exp_id, exist_ok=True)
-log_folder = os.path.join(exp_id, system.now_str())
+time_str = datetime.now().strftime("%Y-%m-%d %H-%M-%S_%f")[:-2]
+log_folder = os.path.join(exp_id, time_str)
 logger_formats = ["stdout", "log", "csv"]
 if v["eval"]["log_tensorboard"]:
     logger_formats.append("tensorboard")
