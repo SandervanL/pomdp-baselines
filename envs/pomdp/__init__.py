@@ -206,6 +206,37 @@ register(
     entry_point="envs.pomdp.MazeEnvs:DoubleBlockedPartialMazeEnv",
     max_episode_steps=MAX_MAZE_STEPS,
 )
+register(
+    "double-blocked-2-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked2PartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "double-blocked-3-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked3PartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "double-blocked-4-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked4PartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "double-blocked-5-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked5PartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "double-blocked-6-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked6PartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+register(
+    "double-blocked-7-maze-partial-v0",
+    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked7PartialMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
+
 
 ### Below are pybullect (roboschool) environments, using BLT for Bullet
 # import pybullet_envs

@@ -4,6 +4,7 @@ import gymnasium as gym
 from gymnasium import spaces, Env
 import numpy as np
 from gymnasium.core import ObsType, ActType
+from gymnasium.spaces import Box
 
 
 class POMDPWrapper(gym.Wrapper):
@@ -28,15 +29,20 @@ class POMDPWrapper(gym.Wrapper):
             self.act_continuous = False
 
     def get_obs(self, state: np.ndarray) -> ObsType:
-        """ Get the partially observed state. """
+        """Get the partially observed state."""
         return state[self.partially_obs_dims].copy()
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
-        state, info = self.env.reset(seed=seed, options=options)  # TODO said 'no kwargs'. Why?
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
+        state, info = self.env.reset(
+            seed=seed, options=options
+        )  # TODO said 'no kwargs'. Why?
         return self.get_obs(state), info
 
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if self.act_continuous:
             # recover the action
             action = np.clip(action, -1, 1)  # first clip into [-1, 1]

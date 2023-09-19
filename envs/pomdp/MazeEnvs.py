@@ -181,6 +181,38 @@ class DoubleBlockedPartialMazeEnv(PartialObsMazeEnv):
         super().__init__(maze=DOUBLE_MAP_BLOCKED, window_size=WINDOW_SIZE)
 
 
+class DoubleBlocked2PartialMazeEnv(PartialObsMazeEnv):
+    def __init__(self):
+        super().__init__(maze=DOUBLE_MAP_BLOCKED_2, window_size=WINDOW_SIZE)
+
+
+class DoubleBlocked3PartialMazeEnv(PartialObsMazeEnv):
+    def __init__(self):
+        super().__init__(maze=DOUBLE_MAP_BLOCKED_3, window_size=WINDOW_SIZE)
+
+
+class DoubleBlocked4PartialMazeEnv(PartialObsMazeEnv):
+    def __init__(self):
+        super().__init__(maze=DOUBLE_MAP_BLOCKED_4, window_size=WINDOW_SIZE)
+
+
+class DoubleBlocked5PartialMazeEnv(PartialObsMazeEnv):
+    def __init__(self):
+        super().__init__(maze=DOUBLE_MAP_BLOCKED_5, window_size=WINDOW_SIZE)
+
+
+class DoubleBlocked6PartialMazeEnv(PartialObsMazeEnv):
+    def __init__(self):
+        super().__init__(maze=DOUBLE_MAP_BLOCKED_6, window_size=WINDOW_SIZE)
+
+
+class DoubleBlocked7PartialMazeEnv(PartialObsMazeEnv):
+    def __init(self):
+        super().__init__(maze=DOUBLE_MAP_BLOCKED_7, window_size=WINDOW_SIZE)
+
+
+# fmt: off
+
 CORRIDOR_MAZE = [
     [1, 1, 1, 1, 1, 1, 1, 1, 1],
     [1, 2, 0, 0, 0, 0, 0, 3, 1],
@@ -1563,3 +1595,61 @@ DOUBLE_MAP_BLOCKED = [
     [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
 ]
+
+DOUBLE_MAP = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 3, 1],
+    [1, 3, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+DOUBLE_MAP_BLOCKED_7 = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 3, 1],
+    [1, 3, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+DOUBLE_MAP_BLOCKED_6 = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 3, 0, 1, 0, 2, 0, 0, 0, 0, 0, 3, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+DOUBLE_MAP_BLOCKED_5 = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 3, 0, 1, 0, 2, 0, 0, 0, 0, 3, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+DOUBLE_MAP_BLOCKED_4 = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 3, 0, 1, 0, 2, 0, 0, 0, 3, 0, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+DOUBLE_MAP_BLOCKED_3 = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 3, 0, 1, 0, 2, 0, 0, 3, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+DOUBLE_MAP_BLOCKED_2 = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 3, 0, 1, 0, 2, 0, 3, 0, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+]
+
+# fmt: on
