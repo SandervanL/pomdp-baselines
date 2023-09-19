@@ -18,13 +18,13 @@ PROB_MIN = 1e-8
 
 class MarkovPolicyBase(Mlp):
     def __init__(
-            self,
-            obs_dim: int,
-            action_dim: int,
-            hidden_sizes: list[int],
-            init_w: float = 1e-3,
-            image_encoder: Optional[ImageEncoder] = None,  # TODO find type hint
-            **kwargs
+        self,
+        obs_dim: int,
+        action_dim: int,
+        hidden_sizes: list[int],
+        init_w: float = 1e-3,
+        image_encoder: Optional[ImageEncoder] = None,  # TODO find type hint
+        **kwargs
     ):
         self.save_init_params(locals())
         self.action_dim: int = action_dim
@@ -95,14 +95,14 @@ class TanhGaussianPolicy(MarkovPolicyBase):
     """
 
     def __init__(
-            self,
-            obs_dim: int,
-            action_dim: int,
-            hidden_sizes: list[int],
-            std: Optional[float] = None,
-            init_w: float = 1e-3,
-            image_encoder: Optional[ImageEncoder] = None,
-            **kwargs
+        self,
+        obs_dim: int,
+        action_dim: int,
+        hidden_sizes: list[int],
+        std: Optional[float] = None,
+        init_w: float = 1e-3,
+        image_encoder: Optional[ImageEncoder] = None,
+        **kwargs
     ):
         self.save_init_params(locals())
         super().__init__(
@@ -124,12 +124,12 @@ class TanhGaussianPolicy(MarkovPolicyBase):
             assert LOG_SIG_MIN <= self.log_std <= LOG_SIG_MAX
 
     def forward(
-            self,
-            obs: ObsType,
-            reparameterize: bool = True,
-            deterministic: bool = False,
-            return_log_prob: bool = False,
-            valid_actions: Optional[np.ndarray] = None,
+        self,
+        obs: ObsType,
+        reparameterize: bool = True,
+        deterministic: bool = False,
+        return_log_prob: bool = False,
+        valid_actions: Optional[np.ndarray] = None,
     ) -> dict[ActType, Tensor, Tensor, Optional[Tensor]]:
         """
         :param obs: Observation, usually 2D (B, dim), but maybe 3D (T, B, dim)
@@ -156,13 +156,17 @@ class TanhGaussianPolicy(MarkovPolicyBase):
         else:
             tanh_normal = TanhNormal(mean, std)  # (*, B, dim)
             if return_log_prob:
-                sample_func = tanh_normal.rsample if reparameterize else tanh_normal.sample
+                sample_func = (
+                    tanh_normal.rsample if reparameterize else tanh_normal.sample
+                )
                 action, pre_tanh_value = sample_func(return_pretanh_value=True)
 
                 log_prob = tanh_normal.log_prob(action, pre_tanh_value=pre_tanh_value)
                 log_prob = log_prob.sum(dim=-1, keepdim=True)  # (*, B, 1)
             else:
-                action = tanh_normal.rsample() if reparameterize else tanh_normal.sample()
+                action = (
+                    tanh_normal.rsample() if reparameterize else tanh_normal.sample()
+                )
 
         return action, mean, log_std, log_prob
 
@@ -180,11 +184,11 @@ class CategoricalPolicy(MarkovPolicyBase):
     """
 
     def forward(
-            self,
-            obs: ObsType,
-            deterministic: bool = False,
-            return_log_prob: bool = False,
-            valid_actions: Optional[np.ndarray] = None,
+        self,
+        obs: ObsType,
+        deterministic: bool = False,
+        return_log_prob: bool = False,
+        valid_actions: Optional[np.ndarray] = None,
     ) -> tuple[Tensor, Tensor, Optional[Tensor]]:
         """
         :param obs: Observation, usually 2D (B, dim), but maybe 3D (T, B, dim)
@@ -198,8 +202,9 @@ class CategoricalPolicy(MarkovPolicyBase):
 
         if deterministic:
             if valid_actions is not None:
-                action_logits = ((action_logits + action_logits.min().abs() + 1)
-                                 * ptu.from_numpy(valid_actions))
+                action_logits = (
+                    action_logits + action_logits.min().abs() + 1
+                ) * ptu.from_numpy(valid_actions)
             action = torch.argmax(action_logits, dim=-1)  # (*)
             assert not return_log_prob  # NOTE: cannot be used for estimating entropy
         else:
@@ -207,8 +212,16 @@ class CategoricalPolicy(MarkovPolicyBase):
 
             # Mask out invalid actions
             if valid_actions is not None:
-                prob = prob * ptu.from_numpy(valid_actions)
-                prob = prob / (prob.sum(dim=-1, keepdim=True) + PROB_MIN)
+                valid_actions = ptu.from_numpy(valid_actions)
+                prob *= valid_actions
+                logit_sum = prob.sum(dim=-1, keepdim=True)
+                if logit_sum == 0:
+                    # Cannot divide by logit_sum, so give equal probabilities
+                    prob = torch.zeros_like(prob)
+                    prob[valid_actions == 1] = 1 / valid_actions.sum(dim=-1)
+                else:
+                    # Normalize probabilities
+                    prob /= logit_sum
 
             distribution = Categorical(prob)
             # categorical distr cannot reparameterize
@@ -217,7 +230,7 @@ class CategoricalPolicy(MarkovPolicyBase):
                 log_prob = torch.log(torch.clamp(prob, min=PROB_MIN))
 
         if valid_actions is not None and valid_actions[action.long()] == 0:
-            print('breakpoint')
+            print("breakpoint")
 
         # convert to one-hot vectors
         action = F.one_hot(action.long(), num_classes=self.action_dim).float()  # (*, A)

@@ -59,7 +59,7 @@ def put_in_middle(str1, str2):
         return str2
     else:
         start = (n - m) // 2
-        return str1[:start] + str2 + str1[start + m:]
+        return str1[:start] + str2 + str1[start + m :]
 
 
 class HumanOutputFormat(KVWriter, SeqWriter):
@@ -69,7 +69,7 @@ class HumanOutputFormat(KVWriter, SeqWriter):
             self.own_file = True
         else:
             assert hasattr(filename_or_file, "read"), (
-                    "expected file or str, got %s" % filename_or_file
+                "expected file or str, got %s" % filename_or_file
             )
             self.file = filename_or_file
             self.own_file = False
@@ -77,7 +77,7 @@ class HumanOutputFormat(KVWriter, SeqWriter):
     def writekvs(self, kvs):
         # Create strings for printing
         key2str = {}
-        for (key, val) in sorted(kvs.items()):
+        for key, val in sorted(kvs.items()):
             if isinstance(val, float):
                 valstr = "%-8.3g" % (val,)
             else:
@@ -99,7 +99,7 @@ class HumanOutputFormat(KVWriter, SeqWriter):
         dashes = "-" * (keywidth + valwidth + 7)
         dashes_time = put_in_middle(dashes, timestamp)
         lines = [dashes_time]
-        for (key, val) in sorted(key2str.items()):
+        for key, val in sorted(key2str.items()):
             lines.append(
                 "| %s%s | %s%s |"
                 % (
@@ -159,7 +159,7 @@ class CSVOutputFormat(KVWriter):
             self.file.seek(0)
             lines = self.file.readlines()
             self.file.seek(0)
-            for (i, k) in enumerate(self.keys):
+            for i, k in enumerate(self.keys):
                 if i > 0:
                     self.file.write(",")
                 self.file.write(k)
@@ -168,7 +168,7 @@ class CSVOutputFormat(KVWriter):
                 self.file.write(line[:-1])
                 self.file.write(self.sep * len(extra_keys))
                 self.file.write("\n")
-        for (i, k) in enumerate(self.keys):
+        for i, k in enumerate(self.keys):
             if i > 0:
                 self.file.write(",")
             v = kvs.get(k)
@@ -250,7 +250,7 @@ def logkvs(d):
     """
     Log a dictionary of key-value pairs
     """
-    for (k, v) in d.items():
+    for k, v in d.items():
         logkv(k, v)
 
 
@@ -270,7 +270,7 @@ def add_figure(*args):
 
 def dumpkvs():
     """
-    Write all of the diagnostics from the current iteration
+    Write all the diagnostics from the current iteration
 
     level: int. (see logger.py docs) If the global logger level is higher than
                 the level argument here, don't print to stdout.

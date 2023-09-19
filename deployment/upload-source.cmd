@@ -6,4 +6,5 @@ if exist %destination% del %destination%
 
 scp -i C:\Users\Sander\.ssh\delftblue_rsa %destination% sajvanleeuwen@login.delftblue.tudelft.nl:/home/sajvanleeuwen/pomdp-baselines.zip
 
-ssh delftblue "rm -rf /home/sajvanleeuwen/distance-test; unzip /home/sajvanleeuwen/pomdp-baselines.zip -d /home/sajvanleeuwen/distance-test; rm /home/sajvanleeuwen/pomdp-baselines.zip; exit"
+set target_dir=distance-test-no-actions
+ssh delftblue "rm -rf /home/sajvanleeuwen/%target_dir%; unzip /home/sajvanleeuwen/pomdp-baselines.zip -d /home/sajvanleeuwen/%target_dir%; rm /home/sajvanleeuwen/pomdp-baselines.zip; exit"

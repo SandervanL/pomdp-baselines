@@ -5,6 +5,7 @@ env:
   env_name: double-blocked-3-maze-partial-v0
 
   num_eval_tasks: 20 # num of eval episodes
+  valid_actions: true
 
 train:
   # 50*200 = 10k steps

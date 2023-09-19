@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="distance-5"
+#SBATCH --job-name="distance-5-no-action"
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1	          # this is equivalent to number of NODES
 ##SBATCH --gpus-per-task=4  # comment out if not needing GPUs
@@ -39,7 +39,7 @@ project_path=$dir_path/..
 echo "project path: ${project_path}"
 
 # Call your script
-srun python $project_path/main.py --cfg $project_path/configs/pomdp/maze/v/blocked-5.yml
+srun python $project_path/main.py --cfg $project_path/configs/pomdp/maze/blocked-5.yml
 
 # the other part of view GPU resource utilization:
 #/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"

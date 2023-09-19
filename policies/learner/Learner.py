@@ -3,11 +3,12 @@ import time
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 import numpy as np
 import torch
-import wandb
+
+# import wandb
 from torch import Tensor
 from torch.nn import functional as F
 import gymnasium as gym
@@ -83,7 +84,7 @@ class Learner:
         else:
             raise ValueError
 
-    def _init_env(self, env_type: str, **kwargs):
+    def _init_env(self, env_type: str, valid_actions: Any, **kwargs):
         # initialize environment
         assert env_type in [
             "meta",
@@ -94,6 +95,7 @@ class Learner:
             "atari",
         ]
         self.env_type = env_type
+        self.env_valid_actions = valid_actions == True
         self.init_env(env_type=env_type, **kwargs)
 
         # get action / observation dimensions
@@ -340,21 +342,25 @@ class Learner:
 
             obs = ptu.from_numpy(obs_numpy)  # reset task
             obs = obs.reshape(1, obs.shape[-1])
-            task_embedding = (
+            task_embedding: Optional[Tensor] = (
                 info["embedding"].unsqueeze(0) if "embedding" in info else None
+            )
+            valid_actions: Optional[np.ndarray] = (
+                info.get("valid_actions") if self.env_valid_actions else None
             )
             done_rollout = False
 
             if self.agent_arch in [AGENT_ARCHS.Memory, AGENT_ARCHS.Memory_Markov]:
                 # temporary storage
-                obs_list, act_list, rew_list, next_obs_list, term_list, task_list = (
-                    [],
+                obs_list, act_list, rew_list, next_obs_list, term_list = (
                     [],
                     [],
                     [],
                     [],
                     [],
                 )
+                task_list = []
+                orig_state_list = []
 
             if self.agent_arch == AGENT_ARCHS.Memory:
                 # get hidden state at timestep=0, None for markov
@@ -365,7 +371,7 @@ class Learner:
 
             while not done_rollout:
                 if random_actions:
-                    action = self.select_random_action(info.get("valid_actions"))
+                    action = self.select_random_action(valid_actions)
                 else:
                     # policy takes hidden state as input for memory-based actor,
                     # while takes obs for markov actor
@@ -377,7 +383,7 @@ class Learner:
                             obs=obs,
                             deterministic=False,
                             task=task_embedding,
-                            valid_actions=info.get("valid_actions"),
+                            valid_actions=valid_actions,
                         )
                     else:
                         action, _, _, _ = self.agent.act(
@@ -441,6 +447,8 @@ class Learner:
 
                     if task_embedding is not None:
                         task_list.append(task_embedding)
+                    if "original_state" in info:
+                        orig_state_list.append(info["original_state"])
 
                 # set: obs <- next_obs
                 obs = next_obs.clone()
@@ -558,8 +566,11 @@ class Learner:
                 obs = ptu.from_numpy(obs_numpy)  # reset
 
             obs = obs.reshape(1, obs.shape[-1])
-            task_embedding = (
+            task_embedding: Optional[Tensor] = (
                 info["embedding"].unsqueeze(0) if "embedding" in info else None
+            )
+            valid_actions: Optional[np.ndarray] = (
+                info.get("valid_actions") if self.env_valid_actions else None
             )
             if self.agent_arch == AGENT_ARCHS.Memory:
                 # assume initial reward = 0.0
@@ -578,14 +589,14 @@ class Learner:
                             obs=obs,
                             deterministic=deterministic,
                             task=task_embedding,
-                            valid_actions=info.get("valid_actions"),
+                            valid_actions=valid_actions,
                         )
                     else:
                         action, _, _, _ = self.agent.act(
                             obs,
                             deterministic=deterministic,
                             task=task_embedding,
-                            valid_actions=info.get("valid_actions"),
+                            valid_actions=valid_actions,
                         )
 
                     # observe reward and next obs
@@ -703,8 +714,8 @@ class Learner:
         self._n_env_steps_total_last = self._n_env_steps_total
         self._start_time_last = time.time()
 
-        if wandb.run is not None:
-            wandb.log(logger.getkvs())
+        # if wandb.run is not None:
+        #     wandb.log(logger.getkvs())
 
         logger.dump_tabular()
 

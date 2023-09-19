@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-import wandb
+# import wandb
 
 t0 = time.time()
 import socket
@@ -170,18 +170,16 @@ logger.log(
     f"total RAM usage: {psutil.Process().memory_info().rss / 1024 ** 3 :.2f} GB\n"
 )
 
-wandb.init(
-    project="Distance Test",
-    config={
-        "env": v["env"]["env_name"],
-        # "env_type": v["env"]["env_type"],
-        # "grad": v["policy"]["embedding_grad"],
-        # "rnn_init": v["policy"]["embedding_rnn_init"],
-        # "obs_init": v["policy"]["embedding_obs_init"],
-        # "task_file": v["env"]["task_file"],
-        # "task_selection": v["env"]["task_selection"],
-    },
-)
+# wandb.init(
+#     project="Distance Test",
+#     config={
+#         "env": v["env"]["env_name"],
+#         "valid_actions": v["env"]["valid_actions"],
+#         "time": "new",
+#     },
+#     mode="offline",
+# )
 
 learner.train()
 wandb.finish()
+print("Done training & evaluating!")
