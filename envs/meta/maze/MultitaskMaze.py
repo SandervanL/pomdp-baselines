@@ -21,6 +21,7 @@ class MazeTask:
     right_direction: bool
     blocked: bool
     task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
+    word: str
 
 
 class MultitaskMaze(Maze):

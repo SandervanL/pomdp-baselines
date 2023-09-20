@@ -68,13 +68,13 @@ class MazeEnv(BaseEnv):
         info = {"valid_actions": self._get_valid_actions()}
 
         if self.is_goal_state():
-            reward = +100
+            reward = +1
             info["success"] = done = True
         elif not valid:
-            reward = -1  # -1
+            reward = 0  # -1  # -1
             done = False
         else:
-            reward = -0.01
+            reward = 0  # 0 -0.01
             done = False
 
         info["original_state"] = next_state

@@ -90,7 +90,7 @@ def _register_maze(name: str, maze: list[list[int]]):
     )
 
 
-MAX_MAZE_STEPS = 1000
+MAX_MAZE_STEPS = 200
 _register_maze("corridor-maze-v0", mazes.CORRIDOR_MAZE)
 _register_maze("u-maze-v0", mazes.U_MAZE)
 _register_maze("t-maze-v0", mazes.T_MAZE)
@@ -115,6 +115,9 @@ _register_maze("double-blocked-4-maze-v0", mazes.DOUBLE_MAP_BLOCKED_4)
 _register_maze("double-blocked-5-maze-v0", mazes.DOUBLE_MAP_BLOCKED_5)
 _register_maze("double-blocked-6-maze-v0", mazes.DOUBLE_MAP_BLOCKED_6)
 _register_maze("double-blocked-7-maze-v0", mazes.DOUBLE_MAP_BLOCKED_7)
+_register_maze("double-blocked-8-maze-v0", mazes.DOUBLE_MAP_BLOCKED_8)
+_register_maze("double-blocked-9-maze-v0", mazes.DOUBLE_MAP_BLOCKED_9)
+_register_maze("double-blocked-10-maze-v0", mazes.DOUBLE_MAP_BLOCKED_10)
 
 
 def _register_partial_maze(name: str, original_maze: str):
@@ -140,6 +143,9 @@ _register_partial_maze("double-blocked-4-maze-partial-v0", "double-blocked-4-maz
 _register_partial_maze("double-blocked-5-maze-partial-v0", "double-blocked-5-maze-v0")
 _register_partial_maze("double-blocked-6-maze-partial-v0", "double-blocked-6-maze-v0")
 _register_partial_maze("double-blocked-7-maze-partial-v0", "double-blocked-7-maze-v0")
+_register_partial_maze("double-blocked-8-maze-partial-v0", "double-blocked-8-maze-v0")
+_register_partial_maze("double-blocked-9-maze-partial-v0", "double-blocked-9-maze-v0")
+_register_partial_maze("double-blocked-10-maze-partial-v0", "double-blocked-10-maze-v0")
 
 ### Below are pybullect (roboschool) environments, using BLT for Bullet
 # import pybullet_envs

@@ -1,3 +1,6 @@
+from collections import defaultdict
+from functools import reduce
+
 import dill
 import numpy as np
 import torch
@@ -21,14 +24,27 @@ def build_classifier(input_dim: int, output_dim: int, hidden_dim: int):
 
 def main(input_file: str):
     # start a new wandb run to track this script
-    # wandb.init(
-    #     # set the wandb project where this run will be logged
-    #     project="Classify Vectors",
-    #     # track hyperparameters and run metadata
-    #     config={"file": input_file},
-    # )
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="Classify Vectors",
+        # track hyperparameters and run metadata
+        config={"file": input_file[input_file.rindex("/") + 1 :]},
+    )
     with open(input_file, "rb") as file:
         tasks: list[MazeTask] = dill.load(file)
+
+    task_types: dict[int, list[MazeTask]] = defaultdict(lambda: [])
+    for task in tasks:
+        task_types[task.task_type].append(task)
+
+    for key, value in task_types.items():
+        orig_len = len(value)
+        while len(task_types[key]) < 1800:
+            task_types[key] += value[:orig_len]
+
+    tasks = []
+    for task_list in task_types.values():
+        tasks += task_list
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     x = torch.cat([task.embedding.unsqueeze(0) for task in tasks], dim=0).to(device)
@@ -63,12 +79,12 @@ def main(input_file: str):
         eval_accuracy = (output.argmax(dim=-1) == eval_y).sum().item() / len(eval_tasks)
         eval_loss = criterion(output, eval_y) / len(eval_tasks)
 
-        # wandb.log(
-        #     {
-        #         "train": {"loss": train_loss, "accuracy": train_accuracy},
-        #         "eval": {"loss": eval_loss, "accuracy": eval_accuracy},
-        #     }
-        # )
+        wandb.log(
+            {
+                "train": {"loss": train_loss, "accuracy": train_accuracy},
+                "eval": {"loss": eval_loss, "accuracy": eval_accuracy},
+            }
+        )
         print(
             f"Epoch {epoch} train loss: {train_loss}, accuracy: {train_accuracy},"
             f" eval loss: {eval_loss}, accuracy: {eval_accuracy}"
@@ -77,10 +93,11 @@ def main(input_file: str):
 
 if __name__ == "__main__":
     files = [
-        "data/light_vs_heavy/sentences_simcse.dill",
-        # "data/light_vs_heavy/sentences_word2vec.dill",
-        # "data/light_vs_heavy/words_simcse.dill",
-        # "data/light_vs_heavy/words_word2vec.dill",
+        "embeddings/light_vs_heavy/sentences_simcse.dill",
+        "embeddings/light_vs_heavy/sentences_word2vec.dill",
+        "embeddings/light_vs_heavy/words_simcse.dill",
+        "embeddings/light_vs_heavy/words_word2vec.dill",
+        "embeddings/perfect.dill",
     ]
     for file in files:
         for _ in range(10):

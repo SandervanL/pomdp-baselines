@@ -6,20 +6,22 @@ from envs.meta.maze.MultitaskMaze import MazeTask
 
 def make_single_tasks_file():
     no_blockage = MazeTask(
-        embedding=Tensor([0.0]), blocked=False, right_direction=False, task_type=0
+        embedding=Tensor([0.0]),
+        blocked=False,
+        right_direction=False,
+        task_type=0,
+        word="no",
     )
     blockage = MazeTask(
         embedding=Tensor([1.0]),
         blocked=True,
         right_direction=False,
         task_type=1,
+        word="yes",
     )
-    tasks = []
-    for i in range(18):
-        tasks.append(no_blockage)
-        tasks.append(blockage)
+    tasks = [blockage, no_blockage]
 
-    with open("configs/meta/maze/v/single_embeddings.pkl", "wb") as file:
+    with open("embeddings/perfect.dill", "wb") as file:
         dill.dump(tasks, file)
 
 

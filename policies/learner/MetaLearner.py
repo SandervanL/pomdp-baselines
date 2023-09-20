@@ -50,13 +50,11 @@ class MetaLearner(Learner):
             elif task_selection == "random-class":
                 # TODO make this work with a percentage perhaps
                 tasks = self.train_env.get_wrapper_attr("get_all_task_types")()
-                tasks_by_class: list[list[int]] = list(
-                    reduce(
-                        lambda acc, x: acc[x[1]].append(x[0]),
-                        tasks,
-                        defaultdict(lambda: []),
-                    ).values()
-                )
+                tasks_by_class_dict: dict[int, list[int]] = defaultdict(lambda: [])
+                for task in tasks:
+                    tasks_by_class_dict[task[1]].append(task[0])
+
+                tasks_by_class: list[list[int]] = list(tasks_by_class_dict.values())
                 self.train_tasks = []
                 self.eval_tasks = []
                 for tasks in tasks_by_class:

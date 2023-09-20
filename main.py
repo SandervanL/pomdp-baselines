@@ -144,7 +144,7 @@ if seq_model != "mlp":
     exp_id += policy_input_str + "/"
 
 os.makedirs(exp_id, exist_ok=True)
-time_str = datetime.now().strftime("%Y-%m-%d %H-%M-%S_%f")[:-2]
+time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")[:-2]
 log_folder = os.path.join(exp_id, time_str)
 logger_formats = ["stdout", "log", "csv"]
 if v["eval"]["log_tensorboard"]:
@@ -184,5 +184,5 @@ logger.log(
 # )
 
 learner.train()
-wandb.finish()
+# wandb.finish()
 print("Done training & evaluating!")
