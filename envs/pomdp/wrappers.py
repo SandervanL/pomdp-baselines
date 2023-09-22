@@ -56,6 +56,76 @@ class POMDPWrapper(gym.Wrapper):
         return self.get_obs(state), reward, terminated, truncated, info
 
 
+class POMDPMazeWrapper(gym.Wrapper):
+    """Partially observable maze environment class."""
+
+    metadata = {"render_modes": ["human", "rgb_array"], "video.frames_per_second": 3}
+
+    def __init__(self, env: Env, window_size: int):
+        super().__init__(env)
+        self.window_size: int = window_size
+
+        self.observation_space = Box(
+            low=0,
+            high=len(self.unwrapped.maze.objects),
+            shape=[(2 * window_size + 1) ** 2],
+            dtype=np.int32,
+        )
+
+    def _get_observation(self, state: np.ndarray) -> np.ndarray:
+        """
+        Gets the observation of the environment.
+        Returns:
+            the observation of the environment (n x n window around the agent).
+        """
+        agent_position = self.unwrapped.maze.objects.agent.positions[0]
+        return state[
+            agent_position[0]
+            - self.window_size : agent_position[0]
+            + self.window_size
+            + 1,
+            agent_position[1]
+            - self.window_size : agent_position[1]
+            + self.window_size
+            + 1,
+        ].flatten()
+
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        """
+        Performs a step in the maze environment.
+        Args:
+            action: the action to perform. (0: up, 1: right, 2: down, 3: left)
+
+        Returns:
+            the observation, the reward, whether the episode is done, and additional information.
+        """
+        _, reward, done, truncated, info = self.env.step(action)
+        return (
+            self._get_observation(info["original_state"]),
+            reward,
+            done,
+            truncated,
+            info,
+        )
+
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
+        """
+        Resets the environment.
+        Args:
+            seed: the seed to use.
+            options: additional options to use.
+
+        Returns:
+            the observation after resetting the environment.
+        """
+        _, info = self.env.reset(seed=seed, options=options)
+        return self._get_observation(info["original_state"]), info
+
+
 def main():
     import envs
 

@@ -1,6 +1,10 @@
 from gymnasium.envs import register
 import gymnasium as gym
 
+# TODO rewrite as an import * as mazes
+
+import envs.pomdp.Mazes as mazes
+
 # Notation:
 # F: full observed (original env)
 # P: position/angle observed
@@ -52,6 +56,7 @@ register(
     max_episode_steps=200,
 )
 
+
 # register(
 #     "LunarLander-F-v0",
 #     entry_point="envs.pomdp.wrappers:POMDPWrapper",
@@ -75,168 +80,72 @@ register(
 #     max_episode_steps=1000,
 # )
 
-MAX_MAZE_STEPS = 1000
-register(
-    "corridor-maze-v0",
-    entry_point="environments.MazeEnvs:CorridorMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "u-maze-v0",
-    entry_point="environments.MazeEnvs:UMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "t-maze-v0",
-    entry_point="environments.MazeEnvs:TMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
 
-register(
-    "block-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:BlockMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block0-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block0MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block1-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block1MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block2-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block2MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block3-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block3MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block4-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block4MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block6-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block6MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block8-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block8MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "block12-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:Block12MazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
+def _register_maze(name: str, maze: list[list[int]]):
+    register(
+        name,
+        entry_point="envs.pomdp.MazeEnv:MazeEnv",
+        kwargs=dict(maze=maze),
+        max_episode_steps=MAX_MAZE_STEPS,
+    )
 
-register(
-    "test-t-fully-v0",
-    entry_point="envs.pomdp.MazeEnvs:TestTMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "test-bend-fully-v0",
-    entry_point="envs.pomdp.MazeEnvs:TestBendMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "test-cross-fully-v0",
-    entry_point="envs.pomdp.MazeEnvs:TestCrossMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
 
-register(
-    "test-t-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:TestTPartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "test-bend-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:TestBendPartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "test-cross-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:TestCrossPartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
+MAX_MAZE_STEPS = 200
+_register_maze("corridor-maze-v0", mazes.CORRIDOR_MAZE)
+_register_maze("u-maze-v0", mazes.U_MAZE)
+_register_maze("t-maze-v0", mazes.T_MAZE)
+_register_maze("block-maze-v0", mazes.BLOCK_MAZE)
+_register_maze("block0-maze-v0", mazes.BLOCK_MAZE_0)
+_register_maze("block1-maze-v0", mazes.BLOCK_MAZE_1)
+_register_maze("block2-maze-v0", mazes.BLOCK_MAZE_2)
+_register_maze("block3-maze-v0", mazes.BLOCK_MAZE_3)
+_register_maze("block4-maze-v0", mazes.BLOCK_MAZE_4)
+_register_maze("block6-maze-v0", mazes.BLOCK_MAZE_6)
+_register_maze("block8-maze-v0", mazes.BLOCK_MAZE_8)
+_register_maze("block12-maze-v0", mazes.BLOCK_MAZE_12)
+_register_maze("test-t-fully-v0", mazes.TEST_T_MAP)
+_register_maze("test-bend-fully-v0", mazes.TEST_BEND_MAP)
+_register_maze("test-cross-fully-v0", mazes.TEST_CROSS_MAP)
+_register_maze("full-maze-without-traps-v0", mazes.FULL_MAZE_WITHOUT_TRAPS)
+_register_maze("full-maze-v0", mazes.FULL_MAZE)
+_register_maze("double-maze-v0", mazes.DOUBLE_MAP)
+_register_maze("double-blocked-2-maze-v0", mazes.DOUBLE_MAP_BLOCKED_2)
+_register_maze("double-blocked-3-maze-v0", mazes.DOUBLE_MAP_BLOCKED_3)
+_register_maze("double-blocked-4-maze-v0", mazes.DOUBLE_MAP_BLOCKED_4)
+_register_maze("double-blocked-5-maze-v0", mazes.DOUBLE_MAP_BLOCKED_5)
+_register_maze("double-blocked-6-maze-v0", mazes.DOUBLE_MAP_BLOCKED_6)
+_register_maze("double-blocked-7-maze-v0", mazes.DOUBLE_MAP_BLOCKED_7)
+_register_maze("double-blocked-8-maze-v0", mazes.DOUBLE_MAP_BLOCKED_8)
+_register_maze("double-blocked-9-maze-v0", mazes.DOUBLE_MAP_BLOCKED_9)
+_register_maze("double-blocked-10-maze-v0", mazes.DOUBLE_MAP_BLOCKED_10)
 
-register(
-    "full-maze-without-traps-v0",
-    entry_point="envs.pomdp.MazeEnvs:FullMazeWithoutTrapsEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "full-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs.MazeEnvs:FullMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
 
-register(
-    "full-maze-without-traps-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:FullMazeWithoutTrapsPartialEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "full-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs.MazeEnvs:FullMazePartialEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "item-maze-v0",
-    entry_point="envs.pomdp.MazeEnvs:ItemMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "item-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:ItemMazePartialEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlockedPartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-2-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked2PartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-3-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked3PartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-4-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked4PartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-5-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked5PartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-6-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked6PartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
-register(
-    "double-blocked-7-maze-partial-v0",
-    entry_point="envs.pomdp.MazeEnvs:DoubleBlocked7PartialMazeEnv",
-    max_episode_steps=MAX_MAZE_STEPS,
-)
+def _register_partial_maze(name: str, original_maze: str):
+    register(
+        name,
+        entry_point="envs.pomdp.wrappers:POMDPMazeWrapper",
+        kwargs=dict(env=gym.make(original_maze), window_size=1),
+        max_episode_steps=MAX_MAZE_STEPS,
+    )
 
+
+_register_partial_maze("test-t-partial-v0", "test-t-fully-v0")
+_register_partial_maze("test-bend-partial-v0", "test-bend-fully-v0")
+_register_partial_maze("test-cross-partial-v0", "test-cross-fully-v0")
+_register_partial_maze(
+    "full-maze-without-traps-partial-v0", "full-maze-without-traps-v0"
+)
+_register_partial_maze("full-maze-partial-v0", "full-maze-v0")
+_register_partial_maze("double-maze-partial-v0", "double-maze-v0")
+_register_partial_maze("double-blocked-2-maze-partial-v0", "double-blocked-2-maze-v0")
+_register_partial_maze("double-blocked-3-maze-partial-v0", "double-blocked-3-maze-v0")
+_register_partial_maze("double-blocked-4-maze-partial-v0", "double-blocked-4-maze-v0")
+_register_partial_maze("double-blocked-5-maze-partial-v0", "double-blocked-5-maze-v0")
+_register_partial_maze("double-blocked-6-maze-partial-v0", "double-blocked-6-maze-v0")
+_register_partial_maze("double-blocked-7-maze-partial-v0", "double-blocked-7-maze-v0")
+_register_partial_maze("double-blocked-8-maze-partial-v0", "double-blocked-8-maze-v0")
+_register_partial_maze("double-blocked-9-maze-partial-v0", "double-blocked-9-maze-v0")
+_register_partial_maze("double-blocked-10-maze-partial-v0", "double-blocked-10-maze-v0")
 
 ### Below are pybullect (roboschool) environments, using BLT for Bullet
 # import pybullet_envs
