@@ -416,7 +416,9 @@ class Learner:
 
             if self.env_type == "meta" and self.train_env.n_tasks is not None:
                 task = self.train_tasks[np.random.randint(len(self.train_tasks))]
-                obs_numpy, info = self.train_env.reset(task=task, seed=self.seed)
+                obs_numpy, info = self.train_env.reset(
+                    seed=self.seed, options={"task": task}
+                )
             else:
                 obs_numpy, info = self.train_env.reset(seed=self.seed)
 
@@ -434,6 +436,7 @@ class Learner:
                     [],
                     [],
                 )
+                orig_state_list = []
 
             if self.agent_arch == AGENT_ARCHS.Memory:
                 # get hidden state at timestep=0, None for markov
@@ -462,6 +465,9 @@ class Learner:
                         )
                     else:
                         action, _, _, _ = self.agent.act(obs, deterministic=False)
+
+                if "agent_position" in info:
+                    self.agent.observe_uncertainty(info["agent_position"])
 
                 # observe reward and next obs (B=1, dim)
                 next_obs, reward, done, info = utl.env_step(
@@ -514,6 +520,8 @@ class Learner:
                     rew_list.append(reward)  # (1, dim)
                     term_list.append(term)  # bool
                     next_obs_list.append(next_obs)  # (1, dim)
+                    if "agent_position" in info:
+                        orig_state_list.append(info["agent_position"])
 
                 # set: obs <- next_obs
                 obs = next_obs.clone()
@@ -526,6 +534,11 @@ class Learner:
                         act_buffer, dim=-1, keepdims=True
                     )  # (L, 1)
 
+                orig_states = (
+                    None
+                    if len(orig_state_list) == 0
+                    else (ptu.get_numpy(torch.cat(orig_state_list, dim=0)))
+                )
                 self.policy_storage.add_episode(
                     observations=ptu.get_numpy(torch.cat(obs_list, dim=0)),  # (L, dim)
                     actions=ptu.get_numpy(act_buffer),  # (L, dim)
@@ -534,6 +547,7 @@ class Learner:
                     next_observations=ptu.get_numpy(
                         torch.cat(next_obs_list, dim=0)
                     ),  # (L, dim)
+                    orig_states=orig_states,
                 )
                 print(
                     f"steps: {steps} term: {term} ret: {torch.cat(rew_list, dim=0).sum().item():.2f}"

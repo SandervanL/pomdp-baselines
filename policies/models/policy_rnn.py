@@ -56,8 +56,9 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.gamma = gamma
         self.tau = tau
 
-        self.algo = RL_ALGORITHMS[algo_name](**(kwargs[algo_name] if algo_name in kwargs else {}),
-                                             action_dim=action_dim)
+        self.algo = RL_ALGORITHMS[algo_name](
+            **(kwargs[algo_name] if algo_name in kwargs else {}), action_dim=action_dim
+        )
 
         # Critics
         self.critic = Critic_RNN(
@@ -246,6 +247,8 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         masks = batch["mask"]
         obs, next_obs = batch["obs"], batch["obs2"]  # (T, B, dim)
+        if "orig_state" in batch and batch["orig_state"] is not None:
+            rewards += self.uncertainty(batch["orig_state"], masks)
 
         # extend observs, actions, rewards, dones from len = T to len = T+1
         observs = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
@@ -260,3 +263,6 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         )  # (T+1, B, dim)
 
         return self.forward(actions, rewards, observs, dones, masks)
+
+    def observe_uncertainty(self, state) -> None:
+        self.uncertainty.observe(state)

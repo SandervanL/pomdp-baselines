@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 
@@ -11,7 +13,8 @@ class SeqReplayBuffer:
         action_dim,
         sampled_seq_len: int,
         sample_weight_baseline: float,
-        **kwargs
+        state_dim: Optional[int] = None,
+        **kwargs,
     ):
         """
         this buffer is used for sequence/trajectory/episode:
@@ -56,6 +59,12 @@ class SeqReplayBuffer:
 
         assert sampled_seq_len >= 2
         assert sample_weight_baseline >= 0.0
+        self._orig_states = (
+            None
+            if state_dim is None
+            else (np.zeros((max_replay_buffer_size, state_dim), dtype=np.float32))
+        )
+
         self._sampled_seq_len = sampled_seq_len
         self._sample_weight_baseline = sample_weight_baseline
 
@@ -74,7 +83,15 @@ class SeqReplayBuffer:
         self._top = 0  # trajectory level (first dim in 3D buffer)
         self._size = 0  # trajectory level (first dim in 3D buffer)
 
-    def add_episode(self, observations, actions, rewards, terminals, next_observations):
+    def add_episode(
+        self,
+        observations,
+        actions,
+        rewards,
+        terminals,
+        next_observations,
+        orig_states=None,
+    ):
         """
         NOTE: must add one whole episode/sequence/trajectory,
                         not some partial transitions
@@ -89,6 +106,7 @@ class SeqReplayBuffer:
             == rewards.shape[0]
             == terminals.shape[0]
             == next_observations.shape[0]
+            == (terminals.shape[0] if orig_states is None else orig_states.shape[0])
             >= 2
         )
 
@@ -102,6 +120,8 @@ class SeqReplayBuffer:
         self._rewards[indices] = rewards
         self._terminals[indices] = terminals
         self._next_observations[indices] = next_observations
+        if orig_states is not None and self._orig_states is not None:
+            self._orig_states[indices] = orig_states
 
         self._valid_starts[indices] = self._compute_valid_starts(seq_len)
 
@@ -165,13 +185,18 @@ class SeqReplayBuffer:
         return np.random.choice(valid_starts_indices, size=batch_size, p=sample_weights)
 
     def _sample_data(self, indices):
-        return dict(
+        result = dict(
             obs=self._observations[indices],
             act=self._actions[indices],
             rew=self._rewards[indices],
             term=self._terminals[indices],
             obs2=self._next_observations[indices],
         )
+
+        if self._orig_states is not None:
+            result["orig_state"] = self._orig_states[indices]
+
+        return result
 
     def _generate_masks(self, indices, batch_size):
         """
