@@ -1,11 +1,9 @@
-from typing import Optional
-
 import numpy as np
 import torch
-from gymnasium import Env
 from torch import Tensor
 
 from uncertainty import Uncertainty
+import torchkit.pytorch_utils as ptu
 
 
 class CountUncertainty(Uncertainty):
@@ -14,29 +12,19 @@ class CountUncertainty(Uncertainty):
     or automatically by passing the environment 'env'. The counts will use
     'resolution'^m different bins for m-dimensional state vectors"""
 
-    def __init__(
-        self,
-        scale: int = 1,
-        env: Optional[Env] = None,
-        state_bounds: Optional[tuple[int, int]] = None,
-        resolution: float = 50,
-    ):
-        super().__init__(scale)
-        if state_bounds is None:
-            self.bounds = [
-                (l, h)
-                for l, h in zip(env.observation_space.low, env.observation_space.high)
-            ]
-        else:
-            self.bounds = state_bounds
+    def __init__(self, scale: int = 1, resolution: float = 50, **kwargs):
+        super().__init__(scale, **kwargs)
         self.resolution = resolution
-        self.count = torch.zeros(*([resolution for _ in self.bounds]), dtype=torch.long)
+        self.count: Tensor = ptu.ones((2**12), dtype=torch.int64)
         self.scale = scale
         self.eps = 1e-7
 
-    def state_bin(self, state: Tensor):
+    def state_bin(self, state: Tensor) -> Tensor:
         """Find the correct bin in 'self.count' for one state."""
-        return torch.where(state[0] == 2)
+        while state.dim() < 3:
+            state = state.unsqueeze(dim=0)
+        state = state.int() + 1  # Account that self.count[0] must be zero always
+        return (state[:, :, 0] << 6 | state[:, :, 1]).unsqueeze(dim=-1)
         # return tuple(
         #     [
         #         int((x - l) / (h - l + self.eps) * self.resolution)
@@ -44,35 +32,21 @@ class CountUncertainty(Uncertainty):
         #     ]
         # )
 
-    def observe(self, state: Tensor, mask: Tensor):
+    def observe(self, state: Tensor) -> None:
         """
-        Add counts for observed 'state's.
+        Add counts for observed 'state'.
         Args:
             state: The state(s) to compute the error for.
-            mask: The done flag(s) for the state(s).
 
         Returns:
             The error between the prediction and target network.
         """
-        if len(state.shape) == 1:
-            state.unsqueeze_(dim=0)
-        if len(mask.shape) == 1:
-            mask.unsqueeze_(dim=0)
+        bins, counts = self.state_bin(state).unique(return_counts=True)
+        self.count[bins] += counts
 
-        for s in state * mask:
-            if s.sum() > 0:
-                b = self.state_bin(s)
-                self.count[b] += 1
-
-    def __call__(self, state: Tensor, mask: Tensor):
+    def __call__(self, state: Tensor) -> Tensor:
         """Returns the estimated uncertainty for observing a (minibatch of) state(s) ans Tensor.
         'state' can be either a Tuple, List, 1d Tensor or 2d Tensor (1d Tensors stacked in dim=0).
         Does not change the counters."""
-        if len(state.shape) == 1:
-            state.unsqueeze_(dim=0)
-        n = torch.zeros(len(state))
-        for i, s in enumerate(state * mask):
-            if s.sum() > 0:
-                b = self.state_bin(s)
-                n[i] = self.count[b]
-        return self.scale / np.sqrt(n + self.eps)
+        bins = self.state_bin(state)
+        return self.scale / torch.sqrt(self.count[bins])

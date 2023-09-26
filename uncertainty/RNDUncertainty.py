@@ -52,7 +52,7 @@ class RNDUncertainty(Uncertainty):
 
         prediction = self.predict_net(state)
         target = self.target_net(state)
-        return self.criterion(prediction * done, target * done)
+        return self.criterion(prediction * mask, target * mask)
 
     def observe(self, state: Tensor, mask: Tensor) -> None:
         """

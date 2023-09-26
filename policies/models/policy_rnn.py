@@ -17,6 +17,7 @@ from torch.nn import functional as F
 from torch.optim import Adam
 
 from policies.rl.base import RLAlgorithmBase
+from uncertainty import UNCERTAINTY_CLASSES, Uncertainty
 from utils import helpers as utl
 from policies.rl import RL_ALGORITHMS
 import torchkit.pytorch_utils as ptu
@@ -39,6 +40,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         action_dim: int,
         algo_name: str,
         rnn_num_layers: int = 1,
+        uncertainty=None,  # or "rnd" or "count"
         lr: float = 3e-4,
         gamma: float = 0.99,
         tau: float = 5e-3,
@@ -48,6 +50,8 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
     ):
         super().__init__()
 
+        if uncertainty is None:
+            uncertainty = {}
         self.obs_dim: int = obs_dim
         self.action_dim: int = action_dim
         self.gamma: float = gamma
@@ -83,6 +87,9 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.actor_optimizer = Adam(self.actor.parameters(), lr=lr)
         # target networks
         self.actor_target: ActorRnn = deepcopy(self.actor)
+        self.uncertainty: Uncertainty = UNCERTAINTY_CLASSES[uncertainty.get("type")](
+            **uncertainty
+        )
 
     @torch.no_grad()
     def get_initial_info(self, *args, **kwargs) -> tuple[Tensor, Tensor, tuple[Tensor]]:
@@ -252,6 +259,9 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         masks = batch["mask"]
         obs, next_obs = batch["obs"], batch["obs2"]  # (T, B, dim)
         tasks = batch["task"] if "task" in batch else None  # (T, B, dim)
+        added_rewards = rewards
+        if "orig_state" in batch and batch["orig_state"] is not None:
+            added_rewards = rewards + self.uncertainty(batch["orig_state"], masks)
 
         # extend observations, actions, rewards, dones from len = T to len = T+1
         observations = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
@@ -259,7 +269,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             (ptu.zeros((1, batch_size, self.action_dim)).float(), actions), dim=0
         )  # (T+1, B, dim)
         rewards = torch.cat(
-            (ptu.zeros((1, batch_size, 1)).float(), rewards), dim=0
+            (ptu.zeros((1, batch_size, 1)).float(), added_rewards), dim=0
         )  # (T+1, B, dim)
         dones = torch.cat(
             (ptu.zeros((1, batch_size, 1)).float(), dones), dim=0

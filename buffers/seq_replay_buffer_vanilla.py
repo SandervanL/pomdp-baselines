@@ -66,7 +66,7 @@ class SeqReplayBuffer:
         self._orig_states = (
             None
             if state_dim is None
-            else (np.zeros((max_replay_buffer_size, task_dim), dtype=np.float32))
+            else (np.zeros((max_replay_buffer_size, state_dim), dtype=np.float32))
         )
 
         assert sampled_seq_len >= 2
@@ -107,7 +107,6 @@ class SeqReplayBuffer:
 
         all the inputs have 2D shape of (L, dim)
         """
-        # TODO finish adding the embedding to the replay buffer
         assert (
             observations.shape[0]
             == actions.shape[0]
@@ -137,8 +136,10 @@ class SeqReplayBuffer:
 
         self._valid_starts[indices] = self._compute_valid_starts(seq_len)
 
-        self._top = (self._top + seq_len) % self._max_replay_buffer_size
-        self._size = min(self._size + seq_len, self._max_replay_buffer_size)
+        self._top = (self._top + self._sampled_seq_len) % self._max_replay_buffer_size
+        self._size = min(
+            self._size + self._sampled_seq_len, self._max_replay_buffer_size
+        )
 
     def _compute_valid_starts(self, seq_len):
         valid_starts = np.ones((seq_len), dtype=float)

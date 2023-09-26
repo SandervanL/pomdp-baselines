@@ -13,7 +13,7 @@ from PIL import Image
 class BaseEnv(gym.Env, ABC):
     """Base class for all maze environments."""
 
-    metadata = {"render_modes": ["human", "rgb_array"], "video.frames_per_second": 3}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 3}
     reward_range = (-float("inf"), float("inf"))
 
     def __init__(self):
@@ -24,7 +24,6 @@ class BaseEnv(gym.Env, ABC):
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Perform one step in the environment."""
-        pass
 
     @abstractmethod
     def reset(
@@ -59,12 +58,13 @@ class BaseEnv(gym.Env, ABC):
         if mode == "rgb_array":
             return img
         elif mode == "human":
-            raise NotImplementedError()
-            # if self.viewer is None:
-            #     self.viewer = SimpleImageViewer()
-            # self.viewer.imshow(img)
-            #
-            # return self.viewer.isopen
+            from gymnasium.envs.classic_control.rendering import SimpleImageViewer
+
+            if self.viewer is None:
+                self.viewer = SimpleImageViewer()
+            self.viewer.imshow(img)
+
+            return self.viewer.isopen
 
     def close(self) -> None:
         """Closes the environment."""

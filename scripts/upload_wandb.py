@@ -28,17 +28,23 @@ def find_csv_and_yaml_pairs(root_dir):
                 yield csv_file, yaml_file
 
 
-def init_wandb(yaml_path: str, project: str, is_old: bool) -> None:
+def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> None:
     yaml = YAML()
     with open(yaml_path, "r") as file:
         config = yaml.load(file)
 
     wandb.init(
         project=project,
+        group=group,
         config={
             "env": config["env"]["env_name"],
-            "actions": config["env"].get("valid_actions"),
+            "actions": config["env"].get("valid_actions", True),
             "old": is_old,
+            "uncertainty": config["policy"]
+            .get("uncertainty", {"scale": "none"})
+            .get("scale", 1),
+            "penalty": "yes",
+            "gamma": config["policy"]["gamma"],
         },
     )
 
@@ -51,34 +57,43 @@ def insert_wandb(csv_file: str) -> None:
         return
 
     data_list = df.to_dict(orient="records")
-    for data in data_list:
+    prev_dict = {
+        "z/env_steps": 0,
+        "z/rl_steps": 0,
+    }
+    counter = 0
+    for index, data in enumerate(data_list):
         filtered_data = {
-            key: value for key, value in data.items() if not math.isnan(value)
+            key: (value if not math.isnan(value) else prev_dict[key])
+            for key, value in data.items()
+            if not math.isnan(value) or key in prev_dict
         }
+
+        # Fill some values with future values
+        for key, value in data.items():
+            if key not in filtered_data:
+                for _, next_data in enumerate(data_list, start=index + 1):
+                    if not math.isnan(next_data[key]):
+                        filtered_data[key] = next_data[key]
+                        break
+
+            if key not in filtered_data or math.isnan(filtered_data[key]):
+                print("What is this")
+        counter += 1
+        prev_dict = filtered_data
         wandb.log(filtered_data)
 
 
 def main():
-    root_directory = (
-        "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\"
-        "Random\\logs-distance-test-new 15-09\\logs\\pomdp"
-    )
+    group = "gamma"
+    root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\distance-tests\\{group}-logs"
     project = "Distance Test"
-    is_old = False
+    is_old = True
 
-    found_csv = False
     for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
-        if not found_csv:
-            if (
-                csv_file
-                == "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\logs-distance-test-new 15-09\\logs\\pomdp\\double-blocked-4-maze-partial-v0\\sacd_lstm\\len--1\\bs-32\\freq-1\\oar\\09-15_16-44_04_62\\progress.csv"
-            ):
-                found_csv = True
-            continue
-
         print(f"CSV File: {csv_file}")
         print(f"YAML File: {yaml_file}")
-        init_wandb(yaml_file, project, is_old)
+        init_wandb(yaml_file, project, is_old, group)
         insert_wandb(csv_file)
         wandb.finish()
         # You can process the CSV and YAML files here as needed

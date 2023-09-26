@@ -9,7 +9,7 @@ env:
 train:
   # 500*200 = 100k steps
   num_iters: 500 # number meta-training iterates
-  num_init_rollouts_pool: 5 # before training
+  num_init_rollouts_pool: 0 # before training
   num_rollouts_per_iter: 1
   buffer_size: 1e6
   batch_size: 256

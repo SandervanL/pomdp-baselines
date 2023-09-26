@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from dataclasses import field
 
-import numpy as np
-
 
 @dataclass
 class Object:
@@ -15,4 +13,4 @@ class Object:
     value: int
     rgb: tuple
     impassable: bool
-    positions: np.ndarray = field(default_factory=lambda: np.ndarray(0))
+    positions: list = field(default_factory=list)

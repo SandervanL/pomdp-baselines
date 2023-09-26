@@ -3,8 +3,6 @@ import sys
 import time
 from datetime import datetime
 
-# import wandb
-
 t0 = time.time()
 import socket
 import numpy as np
@@ -16,7 +14,7 @@ from pathlib import Path
 import psutil
 
 from torchkit.pytorch_utils import set_gpu_mode
-from policies.learner import LEARNER_CLASS
+from policies.learner import Learner
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("cfg", None, "path to configuration file")
@@ -35,17 +33,20 @@ flags.DEFINE_boolean(
     "whether observe the privileged information of POMDP, reduced to MDP",
 )
 flags.DEFINE_boolean("debug", False, "debug mode")
+flags.DEFINE_float("gamma", None, "discount factor")
+flags.DEFINE_string("render_mode", None, "render mode ('null', 'human' or 'rgb_array')")
 
 flags.FLAGS(sys.argv)
 yaml = YAML()
-with open(FLAGS.cfg) as file:
-    v = yaml.load(file)
+v = yaml.load(open(FLAGS.cfg))
 
 # overwrite config params
 if FLAGS.env is not None:
     v["env"]["env_name"] = FLAGS.env
 if FLAGS.algo is not None:
     v["policy"]["algo_name"] = FLAGS.algo
+if FLAGS.render_mode is not None:
+    v["env"]["render_mode"] = None if FLAGS.render_mode == "null" else FLAGS.render_mode
 
 seq_model, algo = v["policy"]["seq_model"], v["policy"]["algo_name"]
 assert seq_model in ["mlp", "lstm", "gru", "lstm-mlp", "gru-mlp"]
@@ -57,6 +58,8 @@ if FLAGS.entropy_alpha is not None:
     v["policy"][algo]["entropy_alpha"] = FLAGS.entropy_alpha
 if FLAGS.target_entropy is not None:
     v["policy"][algo]["target_entropy"] = FLAGS.target_entropy
+if FLAGS.gamma is not None:
+    v["policy"]["gamma"] = FLAGS.gamma
 
 if FLAGS.seed is not None:
     v["seed"] = FLAGS.seed
@@ -95,7 +98,10 @@ else:
     env_name = v["env"]["env_name"]
 exp_id += f"{env_type}/{env_name}/"
 
-oracle = "oracle" in v["env"] and v["env"]["oracle"] == True
+if "oracle" in v["env"] and v["env"]["oracle"] == True:
+    oracle = True
+else:
+    oracle = False
 
 if seq_model == "mlp":
     if oracle:
@@ -125,11 +131,7 @@ if algo in ["sac", "sacd"]:
     elif "target_entropy" in v["policy"]:
         exp_id += f"ent-{v['policy'][algo]['target_entropy']}/"
 
-# exp_id += f"gamma-{v['policy']['gamma']}/"
-if v["env"]["env_type"] == "meta":
-    exp_id += f"emb-{v['policy']['embedding_grad']}/"
-    exp_id += f"rnn-{v['policy']['embedding_rnn_init']}/"
-    exp_id += f"rnn-{v['policy']['embedding_obs_init']}/"
+exp_id += f"gamma-{v['policy']['gamma']}/"
 
 if seq_model != "mlp":
     exp_id += f"len-{v['train']['sampled_seq_len']}/bs-{v['train']['batch_size']}/"
@@ -160,8 +162,7 @@ logger.log("pid", pid, socket.gethostname())
 os.makedirs(os.path.join(logger.get_dir(), "save"))
 
 # start training
-learner_class = LEARNER_CLASS[v["env"]["env_type"]]
-learner = learner_class(
+learner = Learner(
     env_args=v["env"],
     train_args=v["train"],
     eval_args=v["eval"],
@@ -173,16 +174,4 @@ logger.log(
     f"total RAM usage: {psutil.Process().memory_info().rss / 1024 ** 3 :.2f} GB\n"
 )
 
-# wandb.init(
-#     project="Distance Test",
-#     config={
-#         "env": v["env"]["env_name"],
-#         "valid_actions": v["env"]["valid_actions"],
-#         "time": "new",
-#     },
-#     mode="offline",
-# )
-
 learner.train()
-# wandb.finish()
-print("Done training & evaluating!")

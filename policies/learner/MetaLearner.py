@@ -164,7 +164,7 @@ class MetaLearner(Learner):
         )
         logger.record_tabular(
             "metrics/return_eval_total",
-            np.mean(np.sum(eval_results.total_steps, axis=-1)),
+            np.mean(np.sum(eval_results.returns_per_episode, axis=-1)),
         )
         if self.eval_stochastic:
             logger.record_tabular(

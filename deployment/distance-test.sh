@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#SBATCH --job-name="distance-2-no-action"
-#SBATCH --time=24:00:00
+#SBATCH --job-name="test-$1-$2"
+#SBATCH --time=1:00:00
 #SBATCH --ntasks=1	          # this is equivalent to number of NODES
 ##SBATCH --gpus-per-task=4  # comment out if not needing GPUs
 #SBATCH --cpus-per-task=1     # usually recommended in powers of 2 or divisible by 2
@@ -31,15 +31,16 @@ echo "Conda Prefix: ${CONDA_PREFIX}"
 
 # to view GPU resource utilization at the end of the job, setup:
 #previous=$(/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/tail -n '+2')
-source_file_path=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}' | head -n 1)
-echo "Source_file_path: ${source_file_path}"
-dir_path=$(dirname ${source_file_path})
-echo "dir path: ${dir_path}"
-project_path=$dir_path/..
+#source_file_path=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}' | head -n 1)
+#echo "Source_file_path: ${source_file_path}"
+#dir_path=$(dirname ${source_file_path})
+#echo "dir path: ${dir_path}"
+project_path=$3/..
 echo "project path: ${project_path}"
+echo "Seed $1, Gamma $2"
 
 # Call your script
-srun python $project_path/main.py --cfg $project_path/configs/pomdp/maze/blocked-2.yml
+srun python $project_path/main.py --cfg $project_path/configs/pomdp/maze/blocked-10.yml --seed $1 --gamma $2 --render_mode null
 
 # the other part of view GPU resource utilization:
 #/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"
