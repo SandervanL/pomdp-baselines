@@ -51,18 +51,18 @@ class BaseEnv(gym.Env, ABC):
         img = np.asarray(img).astype(np.uint8)
         img_height, img_width = img.shape[:2]
         ratio = max_width / img_width
-        img = Image.fromarray(img).resize(
-            (int(ratio * img_width), int(ratio * img_height))
+        image = Image.fromarray(img).resize(
+            (int(ratio * img_width), int(ratio * img_height)), Image.NEAREST
         )
-        img = np.asarray(img)
+        image = np.asarray(image)
         if mode == "rgb_array":
-            return img
+            return image
         elif mode == "human":
             from gymnasium.envs.classic_control.rendering import SimpleImageViewer
 
             if self.viewer is None:
                 self.viewer = SimpleImageViewer()
-            self.viewer.imshow(img)
+            self.viewer.imshow(image)
 
             return self.viewer.isopen
 

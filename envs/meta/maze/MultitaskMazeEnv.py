@@ -11,20 +11,23 @@ from envs.meta.maze.MultitaskMaze import MultitaskMaze, load_tasks_file, MazeTas
 class MultitaskMazeEnv(gym.Wrapper):
     """Multitask maze environment class."""
 
-    metadata = {"render_modes": ["human", "rgb_array"], "video.frames_per_second": 3}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 3}
 
-    def __init__(self, env: gym.Env, task_file: str, **kwargs):
+    def __init__(self, env_id: str, task_file: str, **kwargs):
+        print("breakpoint")
+        env = gym.make(env_id, **kwargs)
         super().__init__(env)
 
         self.tasks: list[MazeTask] = load_tasks_file(task_file)
         self.task_dim = self.tasks[0].embedding.dim()
 
         assert hasattr(
-            env.unwrapped, "maze"
+            self.env.unwrapped, "maze"
         ), "The environment must have a maze attribute."
-        self.raw_maze = deepcopy(env.unwrapped.maze.maze)
+        self.raw_maze = deepcopy(self.env.unwrapped.maze.maze)
         self.task = None
         self.n_tasks = len(self.tasks)
+        self.n_steps = 0
 
     def reset(
         self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
@@ -37,6 +40,9 @@ class MultitaskMazeEnv(gym.Wrapper):
         Returns:
             the observation after resetting the environment.
         """
+        if self.n_steps < 2:
+            print("breakpoint")
+        self.n_steps = 0
         obs, info = self.env.reset(seed=seed, options=options)
         info["embedding"] = self.task.embedding
         return obs, info
@@ -44,6 +50,7 @@ class MultitaskMazeEnv(gym.Wrapper):
     def step(
         self, action: ActType
     ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        self.n_steps += 1
         data = self.env.step(action)
         data[-1]["embedding"] = self.task.embedding  # Last index is info
         return data
@@ -53,8 +60,7 @@ class MultitaskMazeEnv(gym.Wrapper):
         task: Optional[int] = None,
         *,
         seed: Optional[int] = None,
-        options: Optional[dict[str, Any]] = None
-    ) -> tuple[np.ndarray, dict]:
+    ) -> None:
         """
         Resets to a new task.
         Args:
@@ -65,13 +71,13 @@ class MultitaskMazeEnv(gym.Wrapper):
         Returns:
             the observation and info after resetting the environment.
         """
+        if self.n_steps < 2:
+            print("breakpoint")
         if task is None:
             self.task = self.get_random_task(seed=seed)
         else:
             self.task = self.tasks[task]
         self.env.unwrapped.maze = MultitaskMaze(self.task, self.raw_maze)
-
-        return self.reset(seed=seed, options=options)
 
     def get_current_task(self):
         return self.task
@@ -86,3 +92,14 @@ class MultitaskMazeEnv(gym.Wrapper):
     def get_random_task(self, seed: Optional[int] = None):
         rng = np.random.RandomState(seed)
         return rng.choice(self.tasks)
+
+    def get_image(self):
+        """
+        Gets the image of the maze.
+        Returns:
+            the image of the maze.
+        """
+        image = self.maze.to_rgb()
+        if not self.objects.item.blocked:
+            print("breakpoint")
+        return image

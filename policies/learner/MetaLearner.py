@@ -16,7 +16,6 @@ class MetaLearner(Learner):
         env_name: str,
         task_selection: str = "random",
         max_rollouts_per_task: Optional[int] = None,
-        num_tasks: Optional[int] = None,
         num_train_tasks: Optional[int] = None,
         num_eval_tasks: Optional[int] = None,
         **kwargs
@@ -28,7 +27,6 @@ class MetaLearner(Learner):
         self.train_env = make_env(
             env_name,
             max_rollouts_per_task,
-            n_tasks=num_tasks,
             **kwargs,
         )  # oracle in kwargs
         self.eval_env = self.train_env

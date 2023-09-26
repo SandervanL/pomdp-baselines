@@ -27,13 +27,8 @@ class MazeTask:
 class MultitaskMaze(Maze):
     def __init__(self, task: MazeTask, maze: np.ndarray, **kwargs):
         item_maze = deepcopy(maze)
-        item_locations = self.get_item_locations(maze)
+        self.item_location = self.get_item_locations(item_maze)[0]
         self.blocked = task.blocked
-
-        # If the blockage is to the right, set left free
-        free_loc = item_locations[0] if task.right_direction else item_locations[1]
-        item_maze[free_loc[0], free_loc[1]] = 0
-
         super().__init__(item_maze, **kwargs)
 
     @staticmethod
@@ -69,7 +64,8 @@ class MultitaskMaze(Maze):
         obstacle = Object("obstacle", 1, Color.obstacle, True, self._get_places([1, 4]))
         agent = Object("agent", 2, Color.agent, False, self._get_places(2))
         goal = Object("goal", 3, Color.goal, False, self._get_places(3))
-        item = Object("item", 4, Color.box, self.blocked, self._get_places(4))
+        color = Color.lava if self.blocked else Color.water
+        item = Object("item", 4, color, self.blocked, self._get_places(4))
         return free, obstacle, agent, goal, item
 
 

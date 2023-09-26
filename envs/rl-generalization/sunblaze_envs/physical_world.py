@@ -320,7 +320,7 @@ class PhysicalEnvironment:
 class GymEnvironment(BaseGymEnvironment):
     metadata = {
         "render_modes": ["human", "rgb_array"],
-        "video.frames_per_second": 50,
+        "render_fps": 50,
     }
     worlds = None
 

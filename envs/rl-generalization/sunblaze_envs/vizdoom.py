@@ -126,7 +126,7 @@ def sample_things(things, modify_things):
 class VizDoomEnvironment(gym.Env):
     metadata = {
         "render_modes": ["rgb_array"],
-        "video.frames_per_second": 35,
+        "render_fps": 35,
     }
     # Scenario definitions. Within each scenario definition, configuration is inherited
     # from the baseline variant to avoid repetition.

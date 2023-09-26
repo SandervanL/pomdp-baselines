@@ -18,9 +18,10 @@ def mujoco_wrapper(entry_point, **kwargs):
 class VariBadWrapper(gym.Wrapper):
     def __init__(
         self,
-        env: gym.Env,
+        env: str,
         episodes_per_task: int,
         oracle: bool = False,  # default no
+        **kwargs,
     ):
         """
         Wrapper, creates a multi-episode (BA)MDP around a one-episode MDP. Automatically deals with
@@ -29,8 +30,8 @@ class VariBadWrapper(gym.Wrapper):
         - normalized actions in case of continuous action space
         - adding the timestep / done info to the state (might be needed to make states markov)
         """
-
-        super().__init__(env)
+        env_cls = gym.make(env, **kwargs)
+        super().__init__(env_cls)
 
         # if continuous actions, make sure in [-1, 1]
         # NOTE: policy won't use action_space.low/high, just set [-1,1]

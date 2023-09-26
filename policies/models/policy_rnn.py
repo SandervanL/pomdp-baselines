@@ -261,7 +261,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         tasks = batch["task"] if "task" in batch else None  # (T, B, dim)
         added_rewards = rewards
         if "orig_state" in batch and batch["orig_state"] is not None:
-            added_rewards = rewards + self.uncertainty(batch["orig_state"], masks)
+            added_rewards = rewards + self.uncertainty(batch["orig_state"])
 
         # extend observations, actions, rewards, dones from len = T to len = T+1
         observations = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)

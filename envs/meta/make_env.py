@@ -11,8 +11,10 @@ def make_env(env_id: str, episodes_per_task: int, oracle: bool = False, **kwargs
     """
     kwargs: include n_tasks=num_tasks
     """
+    print("breakpoint")
     return VariBadWrapper(
-        env=gym.make(env_id, **kwargs),
+        env=env_id,
         episodes_per_task=episodes_per_task,
         oracle=oracle,
+        **kwargs,
     )
