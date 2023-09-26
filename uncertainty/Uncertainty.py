@@ -1,4 +1,5 @@
 from torch import Tensor
+from torchkit import pytorch_utils as ptu
 
 
 class Uncertainty:
@@ -15,8 +16,10 @@ class Uncertainty:
         'state' can be either a Tuple, List, 1d Tensor or 2d Tensor (1d Tensors stacked in dim=0).
         """
 
-    def __call__(self, state: Tensor, mask: Tensor):
+    def __call__(self, state: Tensor):
         """Returns the estimated uncertainty for observing a (minibatch of) state(s) ans Tensor.
         'state' can be either a Tuple, List, 1d Tensor or 2d Tensor (1d Tensors stacked in dim=0).
         Does not change the counters."""
-        return 0
+        while state.dim() < 3:
+            state = state.unsqueeze(0)
+        return ptu.zeros((state.shape[0], state.shape[1], 1))

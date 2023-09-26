@@ -1,3 +1,6 @@
+from typing import Optional
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -168,7 +171,7 @@ class Actor_RNN(nn.Module):
         obs,
         deterministic=False,
         return_log_prob=False,
-        valid_actions=None
+        valid_actions: Optional[np.ndarray] = None,
     ):
         # for evaluation (not training), so no target actor, and T = 1
         # a function that generates action, works like a pytorch module
@@ -198,7 +201,7 @@ class Actor_RNN(nn.Module):
             observ=joint_embeds,
             deterministic=deterministic,
             return_log_prob=return_log_prob,
-            valid_actions=valid_actions
+            valid_actions=valid_actions,
         )
 
         return action_tuple, current_internal_state

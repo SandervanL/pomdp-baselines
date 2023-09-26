@@ -15,7 +15,7 @@ class CountUncertainty(Uncertainty):
     def __init__(self, scale: int = 1, resolution: float = 50, **kwargs):
         super().__init__(scale, **kwargs)
         self.resolution = resolution
-        self.count: Tensor = ptu.zeros((2**12), dtype=torch.int64)
+        self.count: Tensor = ptu.ones((2**12), dtype=torch.int64)
         self.scale = scale
         self.eps = 1e-7
 
@@ -41,13 +41,12 @@ class CountUncertainty(Uncertainty):
         Returns:
             The error between the prediction and target network.
         """
-        bins = self.state_bin(state)
-        self.count[bins] += 1
+        bins, counts = self.state_bin(state).unique(return_counts=True)
+        self.count[bins] += counts
 
-    def __call__(self, state: Tensor, mask: Tensor) -> Tensor:
+    def __call__(self, state: Tensor) -> Tensor:
         """Returns the estimated uncertainty for observing a (minibatch of) state(s) ans Tensor.
         'state' can be either a Tuple, List, 1d Tensor or 2d Tensor (1d Tensors stacked in dim=0).
         Does not change the counters."""
         bins = self.state_bin(state)
-        counts = self.count[bins] * mask
-        return self.scale / torch.sqrt(counts + self.eps)
+        return self.scale / torch.sqrt(self.count[bins])

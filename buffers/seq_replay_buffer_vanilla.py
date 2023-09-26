@@ -125,8 +125,10 @@ class SeqReplayBuffer:
 
         self._valid_starts[indices] = self._compute_valid_starts(seq_len)
 
-        self._top = (self._top + seq_len) % self._max_replay_buffer_size
-        self._size = min(self._size + seq_len, self._max_replay_buffer_size)
+        self._top = (self._top + self._sampled_seq_len) % self._max_replay_buffer_size
+        self._size = min(
+            self._size + self._sampled_seq_len, self._max_replay_buffer_size
+        )
 
     def _compute_valid_starts(self, seq_len):
         valid_starts = np.ones((seq_len), dtype=float)

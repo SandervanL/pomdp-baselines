@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from datetime import datetime
 
 t0 = time.time()
 import socket
@@ -32,6 +33,8 @@ flags.DEFINE_boolean(
     "whether observe the privileged information of POMDP, reduced to MDP",
 )
 flags.DEFINE_boolean("debug", False, "debug mode")
+flags.DEFINE_float("gamma", None, "discount factor")
+flags.DEFINE_string("render_mode", None, "render mode ('null', 'human' or 'rgb_array')")
 
 flags.FLAGS(sys.argv)
 yaml = YAML()
@@ -42,6 +45,8 @@ if FLAGS.env is not None:
     v["env"]["env_name"] = FLAGS.env
 if FLAGS.algo is not None:
     v["policy"]["algo_name"] = FLAGS.algo
+if FLAGS.render_mode is not None:
+    v["env"]["render_mode"] = None if FLAGS.render_mode == "null" else FLAGS.render_mode
 
 seq_model, algo = v["policy"]["seq_model"], v["policy"]["algo_name"]
 assert seq_model in ["mlp", "lstm", "gru", "lstm-mlp", "gru-mlp"]
@@ -53,6 +58,8 @@ if FLAGS.entropy_alpha is not None:
     v["policy"][algo]["entropy_alpha"] = FLAGS.entropy_alpha
 if FLAGS.target_entropy is not None:
     v["policy"][algo]["target_entropy"] = FLAGS.target_entropy
+if FLAGS.gamma is not None:
+    v["policy"]["gamma"] = FLAGS.gamma
 
 if FLAGS.seed is not None:
     v["seed"] = FLAGS.seed
@@ -139,7 +146,8 @@ if seq_model != "mlp":
     exp_id += policy_input_str + "/"
 
 os.makedirs(exp_id, exist_ok=True)
-log_folder = os.path.join(exp_id, system.now_str())
+time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")[:-2]
+log_folder = os.path.join(exp_id, time_str)
 logger_formats = ["stdout", "log", "csv"]
 if v["eval"]["log_tensorboard"]:
     logger_formats.append("tensorboard")

@@ -283,8 +283,9 @@ class PhysicalEnvironment:
         self._world.step()
         return self.is_terminal
 
-    def reset(self, *, seed: Optional[int] = None,
-              options: Optional[dict[str, Any]] = None) -> None:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> None:
         """Reset the world."""
         self._world.reset_world()
 
@@ -318,8 +319,8 @@ class PhysicalEnvironment:
 
 class GymEnvironment(BaseGymEnvironment):
     metadata = {
-        "render.modes": ["human", "rgb_array"],
-        "video.frames_per_second": 50,
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 50,
     }
     worlds = None
 

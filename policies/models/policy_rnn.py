@@ -6,12 +6,16 @@ which has another branch to encode current state (and action)
 Hidden state update functions get_hidden_state() is inspired by varibad encoder 
 https://github.com/lmzintgraf/varibad/blob/master/models/encoder.py
 """
+from typing import Optional
 
+import numpy as np
 import torch
 from copy import deepcopy
 import torch.nn as nn
 from torch.nn import functional as F
 from torch.optim import Adam
+
+from uncertainty import Uncertainty, UNCERTAINTY_CLASSES
 from utils import helpers as utl
 from policies.rl import RL_ALGORITHMS
 import torchkit.pytorch_utils as ptu
@@ -47,9 +51,13 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         tau=5e-3,
         # pixel obs
         image_encoder_fn=lambda: None,
+        uncertainty=None,  # or "rnd" or "count"
         **kwargs
     ):
         super().__init__()
+
+        if uncertainty is None:
+            uncertainty = {}
 
         self.obs_dim = obs_dim
         self.action_dim = action_dim
@@ -95,6 +103,9 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         self.actor_optimizer = Adam(self.actor.parameters(), lr=lr)
         # target networks
         self.actor_target = deepcopy(self.actor)
+        self.uncertainty: Uncertainty = UNCERTAINTY_CLASSES[uncertainty.get("type")](
+            **uncertainty
+        )
 
     @torch.no_grad()
     def get_initial_info(self):
@@ -109,7 +120,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         obs,
         deterministic=False,
         return_log_prob=False,
-        valid_actions=None,
+        valid_actions: Optional[np.ndarray] = None,
     ):
         prev_action = prev_action.unsqueeze(0)  # (1, B, dim)
         reward = reward.unsqueeze(0)  # (1, B, 1)
@@ -247,8 +258,9 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         masks = batch["mask"]
         obs, next_obs = batch["obs"], batch["obs2"]  # (T, B, dim)
+        added_rewards = rewards
         if "orig_state" in batch and batch["orig_state"] is not None:
-            rewards += self.uncertainty(batch["orig_state"], masks)
+            added_rewards = rewards + self.uncertainty(batch["orig_state"])
 
         # extend observs, actions, rewards, dones from len = T to len = T+1
         observs = torch.cat((obs[[0]], next_obs), dim=0)  # (T+1, B, dim)
@@ -256,7 +268,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             (ptu.zeros((1, batch_size, self.action_dim)).float(), actions), dim=0
         )  # (T+1, B, dim)
         rewards = torch.cat(
-            (ptu.zeros((1, batch_size, 1)).float(), rewards), dim=0
+            (ptu.zeros((1, batch_size, 1)).float(), added_rewards), dim=0
         )  # (T+1, B, dim)
         dones = torch.cat(
             (ptu.zeros((1, batch_size, 1)).float(), dones), dim=0
@@ -264,5 +276,14 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
 
         return self.forward(actions, rewards, observs, dones, masks)
 
-    def observe_uncertainty(self, state) -> None:
-        self.uncertainty.observe(state)
+
+def compare_rewards(rewards, added_rewards, masks, dones, batch_size: int):
+    cumulative = ptu.zeros(batch_size)
+    for i in range(rewards.shape[1]):
+        cumulative += (0.9**i) * added_rewards[i, :, 0] * masks[i, :, 0]
+    done_episodes = torch.where(dones > 0)[1]
+    done_total = cumulative[done_episodes].sum()
+    total = cumulative.sum()
+    undone_total = total - done_total
+    done_difference = done_total - undone_total
+    cumulative_reward = ptu.get_numpy(cumulative)

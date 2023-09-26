@@ -90,7 +90,7 @@ def _register_maze(name: str, maze: list[list[int]]):
     )
 
 
-MAX_MAZE_STEPS = 200
+MAX_MAZE_STEPS = 100
 _register_maze("corridor-maze-v0", mazes.CORRIDOR_MAZE)
 _register_maze("u-maze-v0", mazes.U_MAZE)
 _register_maze("t-maze-v0", mazes.T_MAZE)
@@ -124,7 +124,7 @@ def _register_partial_maze(name: str, original_maze: str):
     register(
         name,
         entry_point="envs.pomdp.wrappers:POMDPMazeWrapper",
-        kwargs=dict(env=gym.make(original_maze), window_size=1),
+        kwargs=dict(env=original_maze, window_size=1),
         max_episode_steps=MAX_MAZE_STEPS,
     )
 

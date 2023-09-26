@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 import numpy as np
 import torch.nn as nn
@@ -21,7 +23,6 @@ class SACD(RLAlgorithmBase):
         alpha_lr=3e-4,
         action_dim=None,
     ):
-
         self.automatic_entropy_tuning = automatic_entropy_tuning
         if self.automatic_entropy_tuning:
             assert target_entropy is not None
@@ -56,9 +57,17 @@ class SACD(RLAlgorithmBase):
         )
         return qf1, qf2
 
-    def select_action(self, actor, observ, deterministic: bool, return_log_prob: bool,
-                      valid_actions=None):
-        action, prob, log_prob = actor(observ, deterministic, return_log_prob, valid_actions)
+    def select_action(
+        self,
+        actor,
+        observ,
+        deterministic: bool,
+        return_log_prob: bool,
+        valid_actions: Optional[np.ndarray] = None,
+    ):
+        action, prob, log_prob = actor(
+            observ, deterministic, return_log_prob, valid_actions=valid_actions
+        )
         return action, prob, log_prob, None
 
     @staticmethod

@@ -76,7 +76,6 @@ class ModelFreeOffPolicy_RNN_MLP(ModelFreeOffPolicy_Separate_RNN):
         obs,
         deterministic=False,
         return_log_prob=False,
-        valid_actions=None,
     ):
         return self.algo.select_action(
             actor=self.actor,

@@ -2,7 +2,7 @@ import os, sys
 import time
 
 import math
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 import torch
@@ -43,6 +43,8 @@ class Learner:
         self,
         env_type: str,
         env_name: str,
+        valid_actions: Any,
+        render_mode: Optional[str] = None,
         max_rollouts_per_task: Optional[int] = None,
         num_tasks: Optional[int] = None,
         num_train_tasks: Optional[int] = None,
@@ -61,6 +63,7 @@ class Learner:
             "atari",
         ]
         self.env_type = env_type
+        self.env_valid_actions = valid_actions == True
 
         if self.env_type == "meta":  # meta tasks: using varibad wrapper
             from envs.meta.make_env import make_env
@@ -106,7 +109,7 @@ class Learner:
             # import envs.credit_assign
 
             assert num_eval_tasks > 0
-            self.train_env = gym.make(env_name)
+            self.train_env = gym.make(env_name, render_mode=render_mode)
             self.train_env.reset(seed=self.seed)
             # self.train_env.action_space.np_random.seed(self.seed)  # TODO 'crucial' but not possible
 
@@ -300,6 +303,7 @@ class Learner:
                 sampled_seq_len=sampled_seq_len,
                 sample_weight_baseline=sample_weight_baseline,
                 observation_type=self.train_env.observation_space.dtype,
+                state_dim=2,
             )
 
         self.batch_size = batch_size
@@ -330,6 +334,7 @@ class Learner:
         self.log_tensorboard = log_tensorboard
         self.eval_stochastic = eval_stochastic
         self.eval_num_episodes_per_task = num_episodes_per_task
+        self.total_eval_success = 0
 
     def _start_training(self):
         self._n_env_steps_total = 0
@@ -420,12 +425,19 @@ class Learner:
                     seed=self.seed, options={"task": task}
                 )
             else:
-                obs_numpy, info = self.train_env.reset(seed=self.seed)
+                obs_numpy, info = self.train_env.reset(
+                    seed=self.seed, options={"train_mode": True}
+                )
 
             obs = ptu.from_numpy(obs_numpy)  # reset task
 
             obs = obs.reshape(1, obs.shape[-1])
             done_rollout = False
+
+            if self.agent_arch == AGENT_ARCHS.Memory:
+                # get hidden state at timestep=0, None for markov
+                # NOTE: assume initial reward = 0.0 (no need to clip)
+                action, reward, internal_state = self.agent.get_initial_info()
 
             if self.agent_arch in [AGENT_ARCHS.Memory, AGENT_ARCHS.Memory_Markov]:
                 # temporary storage
@@ -438,17 +450,22 @@ class Learner:
                 )
                 orig_state_list = []
 
-            if self.agent_arch == AGENT_ARCHS.Memory:
-                # get hidden state at timestep=0, None for markov
-                # NOTE: assume initial reward = 0.0 (no need to clip)
-                action, reward, internal_state = self.agent.get_initial_info()
-
             while not done_rollout:
+                valid_actions: Optional[np.ndarray] = (
+                    info.get("valid_actions") if self.env_valid_actions else None
+                )
                 if random_actions:
                     action = ptu.FloatTensor(
                         [self.train_env.action_space.sample()]
                     )  # (1, A) for continuous action, (1) for discrete action
                     if not self.act_continuous:
+                        if valid_actions is not None:
+                            valid_action_index = (
+                                action.long() % valid_actions.sum(axis=-1)
+                            ).item()
+                            action = ptu.tensor(
+                                [np.where(valid_actions == 1)[0][valid_action_index]]
+                            )
                         action = F.one_hot(
                             action.long(), num_classes=self.act_dim
                         ).float()  # (1, A)
@@ -456,27 +473,32 @@ class Learner:
                     # policy takes hidden state as input for memory-based actor,
                     # while takes obs for markov actor
                     if self.agent_arch == AGENT_ARCHS.Memory:
+                        intrinsic_reward = 0
+                        if "agent_position" in info:
+                            intrinsic_reward = self.agent.uncertainty(
+                                info["agent_position"]
+                            ).squeeze(0)
+
                         (action, _, _, _), internal_state = self.agent.act(
                             prev_internal_state=internal_state,
                             prev_action=action,
-                            reward=reward,
+                            reward=reward + intrinsic_reward,
                             obs=obs,
                             deterministic=False,
+                            valid_actions=valid_actions,
                         )
                     else:
                         action, _, _, _ = self.agent.act(obs, deterministic=False)
-
-                if "agent_position" in info:
-                    self.agent.observe_uncertainty(info["agent_position"])
 
                 # observe reward and next obs (B=1, dim)
                 next_obs, reward, done, info = utl.env_step(
                     self.train_env, action.squeeze(dim=0)
                 )
+
                 if self.reward_clip and self.env_type == "atari":
                     reward = torch.tanh(reward)
 
-                done_rollout = False if ptu.get_numpy(done[0][0]) == 0.0 else True
+                done_rollout = done.item() == 1.0
                 # update statistics
                 steps += 1
 
@@ -493,10 +515,9 @@ class Learner:
                 else:
                     # term ignore time-out scenarios, but record early stopping
                     term = (
-                        False
-                        if "TimeLimit.truncated" in info
-                        or steps >= self.max_trajectory_len
-                        else done_rollout
+                        "TimeLimit.truncated" not in info
+                        and steps < self.max_trajectory_len
+                        and done_rollout
                     )
 
                 # add data to policy buffer
@@ -534,11 +555,12 @@ class Learner:
                         act_buffer, dim=-1, keepdims=True
                     )  # (L, 1)
 
-                orig_states = (
-                    None
-                    if len(orig_state_list) == 0
-                    else (ptu.get_numpy(torch.cat(orig_state_list, dim=0)))
-                )
+                orig_states = None
+                if len(orig_state_list) > 0:
+                    orig_states_tensor = torch.cat(orig_state_list, dim=0)
+                    self.agent.uncertainty.observe(orig_states_tensor)
+                    orig_states = ptu.get_numpy(orig_states_tensor)
+
                 self.policy_storage.add_episode(
                     observations=ptu.get_numpy(torch.cat(obs_list, dim=0)),  # (L, dim)
                     actions=ptu.get_numpy(act_buffer),  # (L, dim)
@@ -623,13 +645,23 @@ class Learner:
             for episode_idx in range(num_episodes):
                 running_reward = 0.0
                 for _ in range(num_steps_per_episode):
+                    valid_actions: Optional[np.ndarray] = (
+                        info.get("valid_actions") if self.env_valid_actions else None
+                    )
                     if self.agent_arch == AGENT_ARCHS.Memory:
+                        intrinsic_reward = 0
+                        if "agent_position" in info:
+                            intrinsic_reward = self.agent.uncertainty(
+                                info["agent_position"],
+                            ).squeeze(0)
+
                         (action, _, _, _), internal_state = self.agent.act(
                             prev_internal_state=internal_state,
                             prev_action=action,
-                            reward=reward,
+                            reward=reward + intrinsic_reward,
                             obs=obs,
                             deterministic=deterministic,
+                            valid_actions=valid_actions,
                         )
                     else:
                         action, _, _, _ = self.agent.act(
@@ -663,6 +695,7 @@ class Learner:
                         and "is_goal_state" in dir(self.eval_env.unwrapped)
                         and self.eval_env.unwrapped.is_goal_state()
                     ):
+                        self.total_eval_success += 1
                         success_rate[task_idx] = 1.0  # ever once reach
                     elif (
                         self.env_type == "generalize"
@@ -670,6 +703,7 @@ class Learner:
                     ):
                         success_rate[task_idx] = 1.0  # ever once reach
                     elif "success" in info and info["success"] == True:  # keytodoor
+                        self.total_eval_success += 1
                         success_rate[task_idx] = 1.0
 
                     if done_rollout:
@@ -885,6 +919,7 @@ class Learner:
             logger.record_tabular(
                 "metrics/success_rate_eval", np.mean(success_rate_eval)
             )
+            logger.record_tabular("metrics/total_eval_success", self.total_eval_success)
 
             if self.eval_stochastic:
                 logger.record_tabular(

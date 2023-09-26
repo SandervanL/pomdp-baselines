@@ -3,7 +3,7 @@ from typing import Optional, Any, SupportsFloat
 import gymnasium as gym
 from gymnasium import spaces, Env
 import numpy as np
-from gymnasium.core import ObsType, ActType
+from gymnasium.core import ObsType, ActType, RenderFrame
 from gymnasium.spaces import Box
 
 
@@ -59,10 +59,12 @@ class POMDPWrapper(gym.Wrapper):
 class POMDPMazeWrapper(gym.Wrapper):
     """Partially observable maze environment class."""
 
-    metadata = {"render_modes": ["human", "rgb_array"], "video.frames_per_second": 3}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 3}
 
-    def __init__(self, env: Env, window_size: int):
+    def __init__(self, env: str, window_size: int, **kwargs):
+        env = gym.make(env, **kwargs)
         super().__init__(env)
+
         self.window_size: int = window_size
 
         self.observation_space = Box(
@@ -89,6 +91,7 @@ class POMDPMazeWrapper(gym.Wrapper):
             + self.window_size
             + 1,
         ].flatten()
+        # return np.array(agent_position)
 
     def step(
         self, action: ActType
@@ -124,6 +127,12 @@ class POMDPMazeWrapper(gym.Wrapper):
         """
         _, info = self.env.reset(seed=seed, options=options)
         return self._get_observation(info["original_state"]), info
+
+    def render(self) -> RenderFrame | list[RenderFrame] | None:
+        return self.env.render()
+
+    def close(self):
+        self.env.close()
 
 
 def main():

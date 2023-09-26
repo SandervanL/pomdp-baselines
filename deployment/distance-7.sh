@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="distance-7-old"
+#SBATCH --job-name="7-baseline-no-penalty"
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1	          # this is equivalent to number of NODES
 ##SBATCH --gpus-per-task=4  # comment out if not needing GPUs
@@ -32,11 +32,7 @@ echo "Conda Prefix: ${CONDA_PREFIX}"
 # to view GPU resource utilization at the end of the job, setup:
 #previous=$(/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/tail -n '+2')
 source_file_path=$(scontrol show job $SLURM_JOBID | awk -F= '/Command=/{print $2}' | head -n 1)
-echo "Source_file_path: ${source_file_path}"
-dir_path=$(dirname ${source_file_path})
-echo "dir path: ${dir_path}"
-project_path=$dir_path/..
-echo "project path: ${project_path}"
+project_path=$(dirname ${source_file_path})/..
 
 # Call your script
 srun python $project_path/main.py --cfg $project_path/configs/pomdp/maze/blocked-7.yml

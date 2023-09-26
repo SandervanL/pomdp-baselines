@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="distance-6-old"
+#SBATCH --job-name="6-baseline-no-penalty"
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1	          # this is equivalent to number of NODES
 ##SBATCH --gpus-per-task=4  # comment out if not needing GPUs
