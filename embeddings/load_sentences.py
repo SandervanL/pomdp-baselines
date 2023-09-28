@@ -52,10 +52,6 @@ def main(file_path: str, out_file: str):
         json.dump(sentences, file)
 
 
-if __name__ == "__main__":
-    main("light_heavy_words.json", "light_heavy_sentences.json")
-
-
 def filter_sentence(sentence: str) -> str:
     return (
         re.sub(r"[0-9.]", "", sentence)
@@ -64,4 +60,11 @@ def filter_sentence(sentence: str) -> str:
         .replace("\u2014", "-")
         .replace('"', "")
         .strip()
+    )
+
+
+if __name__ == "__main__":
+    main(
+        "embeddings/light_vs_heavy/new_words.json",
+        "embeddings/light_vs_heavy/new_sentences.json",
     )

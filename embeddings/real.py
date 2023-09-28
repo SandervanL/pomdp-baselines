@@ -129,7 +129,7 @@ def main(
 
     tasks = creator(inputs, embedder)
 
-    output_file = f"{'sentences' if sentences else 'words'}_{'word2vec' if use_word2vec else 'simcse'}2.dill"
+    output_file = f"{'sentences' if sentences else 'words'}_{'word2vec' if use_word2vec else 'simcse'}.dill"
     print(f"Saving to {output_file}")
     with open(os.path.join(folder, output_file), "wb") as file:
         dill.dump(tasks, file)
