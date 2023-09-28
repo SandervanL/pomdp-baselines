@@ -5,19 +5,19 @@ env:
   env_name: double-map-10-meta-partial-v0
   task_file: embeddings/embeddings/perfect.dill
   max_rollouts_per_task: 1
-  task_selection: even # "even" evaluate on same tasks as train,
-                       # "random" make random train/eval split
-                       # "random-class" make random train/eval split within each class
+  task_selection: even # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
+                       # "random" make random train/eval split (for sentences)
+                       # "random-type" make random train/eval split within each type (no use)
+                       # "random-word" make random train/eval split throughout the words (for unknown word evaluation)
   render_mode: human
 
-  num_eval_tasks: 1 # num of eval episodes
-  num_train_tasks: 1 # num of train tasks
+  train_test_split: 0.8 # train/test split ratio
   valid_actions: false
 
 train:
   # 1000*100 = 10k steps
   num_iters: 500 # number meta-training iterates
-  num_init_rollouts_pool: 32 # before training
+  num_init_rollouts_pool: 64 # before training
   num_rollouts_per_iter: 1
 
   num_updates_per_iter: 5
@@ -32,6 +32,7 @@ eval:
   log_interval: 1 # num of iters
   save_interval: -1
   log_tensorboard: true
+  eval_on_train_tasks: false # eval on train tasks
 
 policy:
   separate: True
@@ -56,7 +57,7 @@ policy:
   #  "directly" returns the same tensor,
   #  "grad" returns a linear layer with relu that can be trained
   #  "no-grad" returns a linear layer without relu that cannot be trained.
-  embedding_grad: "no" # Whether to train the linear layer that transforms the linear embedding to the rnn hidden state
+  embedding_grad: "grad" # Whether to train the linear layer that transforms the linear embedding to the rnn hidden state
 
   sacd:
     entropy_alpha: null

@@ -13,6 +13,7 @@ from torch import Tensor
 from torch.nn import functional as F
 import gymnasium as gym
 
+from envs.meta.maze.MultitaskMaze import MazeTask
 from policies.models import AGENT_CLASSES, AGENT_ARCHS
 from torchkit.networks import ImageEncoder
 
@@ -35,9 +36,12 @@ class EvaluationResults:
     returns_per_episode: np.ndarray | dict = field(
         default_factory=lambda: np.ndarray(0)
     )
-    success_rate: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
-    observations: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
-    total_steps: np.ndarray | dict = field(default_factory=lambda: np.ndarray(0))
+    success_rate: np.ndarray = field(default_factory=lambda: np.ndarray(0))
+    observations: np.ndarray = field(default_factory=lambda: np.ndarray(0))
+    total_steps: np.ndarray = field(default_factory=lambda: np.ndarray(0))
+    left_steps: np.ndarray = field(default_factory=lambda: np.ndarray(0))
+    blocked_indices: np.ndarray = field(default_factory=lambda: np.ndarray(0))
+    unblocked_indices: np.ndarray = field(default_factory=lambda: np.ndarray(0))
 
 
 class Learner:
@@ -415,13 +419,10 @@ class Learner:
                 steps += 1
 
                 ## determine terminal flag per environment
-                if self.env_type == "meta" and "is_goal_state" in dir(
-                    self.train_env.unwrapped
-                ):
+                if self.env_type == "meta" and "success" in info:
                     # NOTE: following varibad practice: for meta env, even if reaching the goal (term=True),
                     # the episode still continues.
-                    term = self.train_env.unwrapped.is_goal_state()
-                    self._successes_in_buffer += int(term)
+                    self._successes_in_buffer += int(info["success"])
                 elif self.env_type == "credit":  # delayed rewards
                     term = done_rollout
                 else:
@@ -473,7 +474,7 @@ class Learner:
                 tasks = (
                     None
                     if len(task_list) == 0
-                    else (ptu.get_numpy(torch.cat(task_list, dim=0)).reshape(-1, 1))
+                    else ptu.get_numpy(torch.cat(task_list, dim=0))
                 )
                 orig_states = None
                 if len(orig_state_list) > 0:
@@ -546,14 +547,16 @@ class Learner:
 
     @torch.no_grad()
     def evaluate(
-        self, tasks: list | np.ndarray, deterministic: bool = True
+        self, tasks: list[MazeTask], deterministic: bool = True
     ) -> EvaluationResults:
+        is_task_blocked = np.ones(len(tasks))
         num_episodes = self.max_rollouts_per_task  # k
         # max_trajectory_len = k*H
-        results = EvaluationResults
+        results = EvaluationResults()
         results.returns_per_episode = np.zeros((len(tasks), num_episodes))
         results.success_rate = np.zeros(len(tasks))
         results.total_steps = np.zeros(len(tasks))
+        results.left_steps = np.zeros(len(tasks))
 
         if self.env_type == "meta":
             num_steps_per_episode = self.eval_env.spec.max_episode_steps  # H
@@ -580,6 +583,9 @@ class Learner:
             else:
                 obs_numpy, info = self.eval_env.reset(seed=self.seed + 1)
                 obs = ptu.from_numpy(obs_numpy)  # reset
+
+            if "blocked" in info and not info["blocked"]:
+                is_task_blocked[task_idx] = 0
 
             obs = obs.reshape(1, obs.shape[-1])
             task_embedding: Optional[Tensor] = (
@@ -645,21 +651,18 @@ class Learner:
                     # set: obs <- next_obs
                     obs = next_obs.clone()
 
-                    if (
-                        self.env_type == "meta"
-                        and "is_goal_state" in dir(self.eval_env.unwrapped)
-                        and self.eval_env.unwrapped.is_goal_state()
-                    ):
-                        results.success_rate[task_idx] = 1.0  # ever once reach
-                        self.total_eval_success += 1
-                    elif (
-                        self.env_type == "generalize"
-                        and self.eval_env.unwrapped.is_success()
-                    ):
-                        results.success_rate[task_idx] = 1.0  # ever once reach
-                    elif "success" in info and info["success"]:  # keytodoor
-                        results.success_rate[task_idx] = 1.0
-                        self.total_eval_success += 1
+                    # if (
+                    #     self.env_type == "generalize"
+                    #     and self.eval_env.unwrapped.is_success()
+                    # ):
+                    #     results.success_rate[task_idx] = 1.0  # ever once reach
+                    # elif (
+                    #     self.env_type == "meta"
+                    #     and "is_goal_state" in dir(self.eval_env.unwrapped)
+                    #     and self.eval_env.unwrapped.is_goal_state()
+                    # ):
+                    #     results.success_rate[task_idx] = 1.0  # ever once reach
+                    #     self.total_eval_success += 1
                     if done_rollout:
                         # for all env types, same
                         break
@@ -667,8 +670,17 @@ class Learner:
                         # for early stopping meta episode like Ant-Dir
                         break
 
+                if "success" in info and info["success"]:  # keytodoor
+                    results.success_rate[task_idx] = 1.0
+                    self.total_eval_success += 1
+                if "left_counter" in info:
+                    results.left_steps[task_idx] = info["left_counter"]
+
                 results.returns_per_episode[task_idx, episode_idx] = running_reward
             results.total_steps[task_idx] = step
+
+        results.blocked_indices = np.where(is_task_blocked)
+        results.unblocked_indices = np.where(1 - is_task_blocked)
         return results
 
     def log_train_stats(self, train_stats: dict[str, float]) -> None:

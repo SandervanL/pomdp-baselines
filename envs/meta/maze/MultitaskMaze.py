@@ -22,6 +22,7 @@ class MazeTask:
     blocked: bool
     task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
     word: str
+    sentence: str
 
 
 class MultitaskMaze(Maze):

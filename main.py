@@ -35,6 +35,12 @@ flags.DEFINE_boolean(
 flags.DEFINE_boolean("debug", False, "debug mode")
 flags.DEFINE_float("gamma", None, "discount factor")
 flags.DEFINE_string("render_mode", None, "render mode ('null', 'human' or 'rgb_array')")
+flags.DEFINE_integer(
+    "embedding_obs_init", 0, "How the embedding is appended to the obs"
+)
+flags.DEFINE_integer(
+    "embedding_rnn_init", 0, "How the embedding is initialized to the RNN"
+)
 
 flags.FLAGS(sys.argv)
 yaml = YAML()
@@ -60,6 +66,10 @@ if FLAGS.target_entropy is not None:
     v["policy"][algo]["target_entropy"] = FLAGS.target_entropy
 if FLAGS.gamma is not None:
     v["policy"]["gamma"] = FLAGS.gamma
+if FLAGS.embedding_obs_init is not None:
+    v["policy"]["embedding_obs_init"] = FLAGS.embedding_obs_init
+if FLAGS.embedding_rnn_init is not None:
+    v["policy"]["embedding_rnn_init"] = FLAGS.embedding_rnn_init
 
 if FLAGS.seed is not None:
     v["seed"] = FLAGS.seed
@@ -108,7 +118,7 @@ if seq_model == "mlp":
         algo_name = f"oracle_{algo}"
     else:
         algo_name = f"Markovian_{algo}"
-    exp_id += algo_name
+    # exp_id += algo_name
 else:  # rnn
     if oracle:
         exp_id += "oracle_"
@@ -120,21 +130,24 @@ else:  # rnn
             rnn_num_layers = str(rnn_num_layers)
     else:
         rnn_num_layers = ""
-    exp_id += f"{algo}_{rnn_num_layers}{seq_model}"
+    # exp_id += f"{algo}_{rnn_num_layers}{seq_model}"
     if "separate" in v["policy"] and v["policy"]["separate"] == False:
         exp_id += "_shared"
-exp_id += "/"
+exp_id += f"obs-{v['policy']['embedding_obs_init']}/"
+exp_id += f"rnn-{v['policy']['embedding_rnn_init']}/"
 
-if algo in ["sac", "sacd"]:
-    if not v["policy"][algo]["automatic_entropy_tuning"]:
-        exp_id += f"alpha-{v['policy'][algo]['entropy_alpha']}/"
-    elif "target_entropy" in v["policy"]:
-        exp_id += f"ent-{v['policy'][algo]['target_entropy']}/"
+# if algo in ["sac", "sacd"]:
+#     if not v["policy"][algo]["automatic_entropy_tuning"]:
+#         exp_id += f"alpha-{v['policy'][algo]['entropy_alpha']}/"
+#     elif "target_entropy" in v["policy"]:
+#         exp_id += f"ent-{v['policy'][algo]['target_entropy']}/"
 
 exp_id += f"gamma-{v['policy']['gamma']}/"
 
 if seq_model != "mlp":
-    exp_id += f"len-{v['train']['sampled_seq_len']}/bs-{v['train']['batch_size']}/"
+    # exp_id += f"len-{v['train']['sampled_seq_len']}/"
+    exp_id += f"bs-{v['train']['batch_size']}/"
+
     # exp_id += f"baseline-{v['train']['sample_weight_baseline']}/"
     exp_id += f"freq-{v['train']['num_updates_per_iter']}/"
     # assert v["policy"]["observ_embedding_size"] > 0
@@ -145,6 +158,7 @@ if seq_model != "mlp":
         policy_input_str += "r"
     exp_id += policy_input_str + "/"
 
+exp_id += f"seed-{seed}/"
 os.makedirs(exp_id, exist_ok=True)
 time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")[:-2]
 log_folder = os.path.join(exp_id, time_str)

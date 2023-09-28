@@ -33,20 +33,8 @@ def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> None:
     with open(yaml_path, "r") as file:
         config = yaml.load(file)
 
-    wandb.init(
-        project=project,
-        group=group,
-        config={
-            "env": config["env"]["env_name"],
-            "actions": config["env"].get("valid_actions", True),
-            "old": is_old,
-            "uncertainty": config["policy"]
-            .get("uncertainty", {"scale": "none"})
-            .get("scale", 1),
-            "penalty": "yes",
-            "gamma": config["policy"]["gamma"],
-        },
-    )
+    config["old"] = is_old
+    wandb.init(project=project, group=group, config=config)
 
 
 def insert_wandb(csv_file: str) -> None:
@@ -85,10 +73,10 @@ def insert_wandb(csv_file: str) -> None:
 
 
 def main():
-    group = "gamma"
-    root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\distance-tests\\{group}-logs"
-    project = "Distance Test"
-    is_old = True
+    group = "embedding"
+    root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\embedding-tests\\{group}-logs"
+    project = "Language Assistance"
+    is_old = False
 
     for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
         print(f"CSV File: {csv_file}")
