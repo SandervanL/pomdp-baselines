@@ -1,79 +1,132 @@
 import dill
 from torch import Tensor
 
-from envs.meta.maze.MultitaskMaze import MazeTask
+from envs.meta.maze.MultitaskMaze import MazeTask, anti_direction
 
 
-def make_single_tasks_file():
+def one_direction_file():
     no_blockage = MazeTask(
         embedding=Tensor([0.0]),
         blocked=False,
-        right_direction=False,
-        task_type=0,
+        task_type=1,
+        sentence="no",
         word="no",
+        short_direction=2,
+        short_hook_direction=2,
+        long_direction=3,
+        long_hook_direction=3,
     )
     blockage = MazeTask(
         embedding=Tensor([1.0]),
         blocked=True,
-        right_direction=False,
         task_type=1,
+        sentence="yes",
         word="yes",
+        short_direction=2,
+        short_hook_direction=2,
+        long_direction=3,
+        long_hook_direction=3,
     )
     tasks = [blockage, no_blockage]
 
-    with open("embeddings/perfect.dill", "wb") as file:
+    with open("embeddings/perfect_one_direction.dill", "wb") as file:
         dill.dump(tasks, file)
 
 
-def make_double_tasks_file():
-    no_blockage_1 = MazeTask(
+def two_directions_file():
+    no_blockage_left = MazeTask(
         embedding=Tensor([0.0, 0.0]),
         blocked=False,
-        right_direction=True,
-        task_type=1,
+        task_type=0,
+        sentence="noleft",
+        word="noleft",
+        short_direction=2,
+        short_hook_direction=2,
+        long_direction=3,
+        long_hook_direction=3,
     )
-    no_blockage_2 = MazeTask(
+    blockage_left = MazeTask(
+        embedding=Tensor([1.0, 0.0]),
+        blocked=True,
+        task_type=0,
+        sentence="yesleft",
+        word="yesleft",
+        short_direction=2,
+        short_hook_direction=2,
+        long_direction=3,
+        long_hook_direction=3,
+    )
+    no_blockage_right = MazeTask(
+        embedding=Tensor([0.0, 1.0]),
+        blocked=False,
+        task_type=0,
+        sentence="noright",
+        word="noright",
+        short_direction=3,
+        short_hook_direction=3,
+        long_direction=2,
+        long_hook_direction=2,
+    )
+    blockage_right = MazeTask(
         embedding=Tensor([1.0, 1.0]),
-        blocked=False,
-        right_direction=True,
-        task_type=2,
-    )
-    right_blockage_obj1 = MazeTask(
-        embedding=Tensor([1.0, 0.0]), blocked=True, right_direction=True, task_type=0
-    )
-    left_blockage_obj1 = MazeTask(
-        embedding=Tensor([-1.0, 0.0]), blocked=True, right_direction=False, task_type=4
-    )
-    right_blockage_obj2 = MazeTask(
-        embedding=Tensor([0.0, 1.0]), blocked=False, right_direction=True, task_type=5
-    )
-    left_blockage_obj2 = MazeTask(
-        embedding=Tensor([0.0, -1.0]),
-        blocked=False,
-        right_direction=False,
-        task_type=6,
+        blocked=True,
+        task_type=0,
+        sentence="yesright",
+        word="yesright",
+        short_direction=3,
+        short_hook_direction=3,
+        long_direction=2,
+        long_hook_direction=2,
     )
 
-    tasks = [
-        no_blockage_1,
-        no_blockage_2,
-        right_blockage_obj1,
-        left_blockage_obj1,
-        right_blockage_obj2,
-        left_blockage_obj2,
-    ]
+    tasks = [no_blockage_left, blockage_left, no_blockage_right, blockage_right]
 
-    # Write tasks to a pickle file
-    with open("configs/meta/maze/v/simple_embeddings.pkl", "wb") as file:
+    with open("embeddings/perfect_two_directions.dill", "wb") as file:
         dill.dump(tasks, file)
 
-    tasks = [
-        right_blockage_obj1,
-        left_blockage_obj1,
-    ]
-    with open("configs/meta/maze/v/double_embeddings.pkl", "wb") as file:
+
+def all_directions():
+    word = 0
+    tasks = []
+    for long_direction in range(4):
+        for long_hook_direction in range(4):
+            for short_direction in range(4):
+                for short_hook_direction in range(4):
+                    if (
+                        short_direction == long_direction
+                        or short_hook_direction == long_direction
+                        or anti_direction(short_direction) == short_hook_direction
+                        or anti_direction(long_direction) == long_hook_direction
+                    ):
+                        continue
+                    for blocked in [True, False]:
+                        word += 1
+                        tasks.append(
+                            MazeTask(
+                                embedding=Tensor(
+                                    [
+                                        float(long_direction),
+                                        float(long_hook_direction),
+                                        float(short_direction),
+                                        float(short_hook_direction),
+                                        float(blocked),
+                                    ]
+                                ),
+                                blocked=blocked,
+                                task_type=int(blocked),
+                                word=str(word),
+                                sentence=str(word),
+                                short_direction=short_direction,
+                                short_hook_direction=short_hook_direction,
+                                long_direction=long_direction,
+                                long_hook_direction=long_hook_direction,
+                            )
+                        )
+    with open("embeddings/perfect_all_directions.dill", "wb") as file:
         dill.dump(tasks, file)
 
 
 if __name__ == "__main__":
-    make_single_tasks_file()
+    one_direction_file()
+    two_directions_file()
+    all_directions()

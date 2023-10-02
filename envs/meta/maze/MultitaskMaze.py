@@ -2,13 +2,14 @@ import os
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import dill
 import numpy as np
 from torch import Tensor
 
 from envs.pomdp.Maze import Maze
-from mazelab import Object
+from mazelab import Object, VonNeumannMotion
 from mazelab import DeepMindColor as Color
 import torchkit.pytorch_utils as ptu
 
@@ -18,16 +19,21 @@ class MazeTask:
     """Maze task class."""
 
     embedding: Tensor
-    right_direction: bool
     blocked: bool
     task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
     word: str
     sentence: str
 
+    # Directions of the map hallways
+    short_direction: int
+    short_hook_direction: int
+    long_direction: int
+    long_hook_direction: int
+
 
 class MultitaskMaze(Maze):
-    def __init__(self, task: MazeTask, maze: np.ndarray, **kwargs):
-        item_maze = deepcopy(maze)
+    def __init__(self, task: MazeTask, **kwargs):
+        item_maze = build_maze(task)
         self.item_location = self.get_item_locations(item_maze)[0]
         self.blocked = task.blocked
         super().__init__(item_maze, **kwargs)
@@ -80,3 +86,104 @@ def load_tasks_file(filename: str) -> list[MazeTask]:
         task.embedding = ptu.to_device(task.embedding)
 
     return tasks
+
+
+def build_maze(task: MazeTask) -> np.ndarray:
+    assert (
+        task.short_direction != task.long_direction
+        and task.short_hook_direction != task.long_direction
+        and anti_direction(task.short_direction) != task.short_hook_direction
+        and anti_direction(task.long_direction) != task.long_hook_direction
+    )
+    maze = np.ones((23, 23), dtype=np.uint8)
+    start_pos = np.array([11, 11])
+    maze[start_pos[0], start_pos[0]] = 2
+    motions = VonNeumannMotion()
+
+    # Part before short hook
+    current_pos = np.copy(start_pos)
+    direction = np.array(motions[task.short_direction])
+    current_pos += direction
+    maze[current_pos[0], current_pos[1]] = 0
+    current_pos += direction
+    make_cross(maze, current_pos)
+    maze[current_pos[0], current_pos[1]] = 4
+
+    # Part after short hook
+    direction = np.array(motions[task.short_hook_direction])
+    current_pos += 2 * direction
+    maze[current_pos[0], current_pos[1]] = 3
+
+    # Part before long hook
+    current_pos = np.copy(start_pos)
+    direction = np.array(motions[task.long_direction])
+    for i in range(3):
+        current_pos += direction
+        maze[current_pos[0], current_pos[1]] = 0
+        current_pos += direction
+        make_cross(maze, current_pos)
+
+    # Part after long hook
+    direction = np.array(motions[task.long_hook_direction])
+    current_pos += 2 * direction
+    maze[current_pos[0], current_pos[1]] = 0
+    current_pos += direction
+    make_cross(maze, current_pos)
+    current_pos += np.array(motions[to_right(task.long_hook_direction)])
+    maze[current_pos[0], current_pos[1]] = 3
+
+    return maze
+
+
+def make_cross(maze: np.ndarray, pos: np.ndarray):
+    motions = VonNeumannMotion()
+    maze[pos[0], pos[1]] = 0
+    for i in range(4):
+        new_pos = pos + motions[i]
+        maze[new_pos[0], new_pos[1]] = 0
+
+
+def anti_direction(direction: int) -> int:
+    return ((direction + 1) % 2) + 2 * (direction // 2)
+
+
+def to_right(direction: int) -> int:
+    if direction == 0:
+        return 3
+    if direction == 1:
+        return 2
+    if direction == 2:
+        return 0
+    if direction == 3:
+        return 1
+
+
+def main():
+    for long_direction in range(4):
+        for long_hook_direction in range(4):
+            for short_direction in range(4):
+                for short_hook_direction in range(4):
+                    if (
+                        short_direction == long_direction
+                        or short_hook_direction == long_direction
+                        or anti_direction(short_direction) == short_hook_direction
+                        or anti_direction(long_direction) == long_hook_direction
+                    ):
+                        continue
+                    task = MazeTask(
+                        None,
+                        False,
+                        0,
+                        "",
+                        "",
+                        short_direction,
+                        short_hook_direction,
+                        long_direction,
+                        long_hook_direction,
+                    )
+                    maze = build_maze(task)
+                    print("breakpoint")
+
+
+if __name__ == "__main__":
+    main()

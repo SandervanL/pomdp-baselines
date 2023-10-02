@@ -2,7 +2,7 @@ import json
 import os
 import re
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, Literal
 
 import numpy as np
 import torch
@@ -10,6 +10,7 @@ from torch import Tensor
 import dill
 
 SentenceList = tuple[list[tuple[str, str]], list[tuple[str, str]]]
+Direction = Literal["north", "south", "west", "east"]
 
 
 @dataclass
@@ -17,11 +18,16 @@ class MazeTask:
     """Maze task class."""
 
     embedding: Tensor
-    right_direction: bool
     blocked: bool
     task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
     word: str
     sentence: str
+
+    # Directions of the map hallways
+    short_direction: int
+    short_hook_direction: int
+    long_direction: int
+    long_hook_direction: int
 
 
 def create_sentence_embedding(
@@ -30,12 +36,15 @@ def create_sentence_embedding(
 ) -> list[MazeTask]:
     tasks = [
         MazeTask(
-            embedder(sentence.strip().lower()),
-            False,
-            index == 0,
-            index,
-            word.strip().lower(),
-            sentence.strip().lower(),
+            embedding=embedder(sentence.strip().lower()),
+            blocked=index == 0,
+            task_type=index,
+            word=word.strip().lower(),
+            sentence=sentence.strip().lower(),
+            short_direction=2,
+            short_hook_direction=2,
+            long_direction=3,
+            long_hook_direction=3,
         )
         for index, sentence_list in enumerate(inputs)
         for sentence, word in sentence_list
@@ -51,12 +60,15 @@ def create_word_embedding(
     unique_words = [{task[1] for task in tasks} for tasks in inputs]
     tasks = [
         MazeTask(
-            embedder(word.strip().lower()),
-            False,
-            index == 0,
-            index,
-            word.strip().lower(),
-            word.strip().lower(),
+            embedding=embedder(word.strip().lower()),
+            blocked=index == 0,
+            task_type=index,
+            word=word.strip().lower(),
+            sentence=word.strip().lower(),
+            short_direction=2,
+            short_hook_direction=2,
+            long_direction=3,
+            long_hook_direction=3,
         )
         for index, sentence_list in enumerate(unique_words)
         for word in sentence_list
@@ -136,7 +148,7 @@ def main(
 
 
 if __name__ == "__main__":
-    folder = "embeddings/light_vs_heavy"
+    folder = "embeddings/one_direction/"
     input_file = "sentences.json"
     for use_word2vec in [True, False]:
         for sentences in [True, False]:

@@ -14,7 +14,6 @@ class MultitaskMazeEnv(gym.Wrapper):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 3}
 
     def __init__(self, env_id: str, task_file: str, **kwargs):
-        print("breakpoint")
         env = gym.make(env_id, **kwargs)
         super().__init__(env)
 

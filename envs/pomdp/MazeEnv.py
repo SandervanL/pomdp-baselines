@@ -232,62 +232,6 @@ class MazeEnv(BaseEnv):
         self.window.blit(surf, (0, 0))
         pygame.display.update()
 
-        # canvas = pygame.Surface((self.window_size, self.window_size))
-        # canvas.fill((255, 255, 255))
-        # pix_square_size = (
-        #     self.window_size / self.size
-        # )  # The size of a single grid square in pixels
-        #
-        # # First we draw the target
-        # target_loc = self.maze.objects.goal.positions[0]
-        # pygame.draw.rect(
-        #     canvas,
-        #     (255, 0, 0),
-        #     pygame.Rect(
-        #         pix_square_size * target_loc,
-        #         (pix_square_size, pix_square_size),
-        #     ),
-        # )
-        # agent_loc = self.maze.objects.agent.positions[0]
-        # # Now we draw the agent
-        # pygame.draw.circle(
-        #     canvas,
-        #     (0, 0, 255),
-        #     (agent_loc + 0.5) * pix_square_size,
-        #     pix_square_size / 3,
-        # )
-        #
-        # # Finally, add some gridlines
-        # for x in range(self.size + 1):
-        #     pygame.draw.line(
-        #         canvas,
-        #         0,
-        #         (0, pix_square_size * x),
-        #         (self.window_size, pix_square_size * x),
-        #         width=3,
-        #     )
-        #     pygame.draw.line(
-        #         canvas,
-        #         0,
-        #         (pix_square_size * x, 0),
-        #         (pix_square_size * x, self.window_size),
-        #         width=3,
-        #     )
-        #
-        # if self.render_mode == "human":
-        #     # The following line copies our drawings from `canvas` to the visible window
-        #     self.window.blit(canvas, canvas.get_rect())
-        #     pygame.event.pump()
-        #     pygame.display.update()
-        #
-        #     # We need to ensure that human-rendering occurs at the predefined framerate.
-        #     # The following line will automatically add a delay to keep the framerate stable.
-        #     self.clock.tick(self.metadata["render_fps"])
-        # else:  # rgb_array
-        #     return np.transpose(
-        #         np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
-        #     )
-
     def close(self):
         if self.window is not None:
             pygame.display.quit()

@@ -13,7 +13,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def generate_prompt(word: str, num_sentences: int):
-    return f"Create {num_sentences} sentences that tell someone else there is a {word} to his/her left"
+    return f"Create {num_sentences} sentences that tell someone else there is a {word} to his/her right"
 
 
 def get_sentence(word: str) -> list[str]:
@@ -37,16 +37,20 @@ def main(file_path: str, out_file: str):
     with open(file_path, "r") as file:
         words = json.load(file)
 
+    with open("progress.csv", "w") as file:
+        file.write("word,sentence\n")
+
     words = [[word[0] for word in word_list] for word_list in words]
 
-    sentences = [
-        [
-            [filter_sentence(sentence), word]
-            for word in word_list
-            for sentence in get_sentence(word)
-        ]
-        for word_list in words
-    ]
+    sentences = []
+    for word_index, word_list in enumerate(words):
+        sentences.append([])
+        for word in word_list:
+            for sentence in get_sentence(word):
+                with open("progress.csv", "a") as file:
+                    file.write(f'"{word}","{sentence}"\n')
+
+                sentences[word_index].append([filter_sentence(sentence), word])
 
     with open(out_file, "w") as file:
         json.dump(sentences, file)
@@ -65,6 +69,6 @@ def filter_sentence(sentence: str) -> str:
 
 if __name__ == "__main__":
     main(
-        "embeddings/light_vs_heavy/new_words.json",
-        "embeddings/light_vs_heavy/new_sentences.json",
+        "embeddings/light_vs_heavy/words.json",
+        "embeddings/light_vs_heavy/right_sentences.json",
     )
