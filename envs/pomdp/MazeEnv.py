@@ -44,7 +44,6 @@ class MazeEnv(BaseEnv):
             dtype=np.int32,
         )
         self.action_space = Discrete(len(self.motions), seed=seed)
-        self.left_counter = 0
         self.render_mode = render_mode
         self.window = self.clock = None
         self.window_size = 100
@@ -68,28 +67,21 @@ class MazeEnv(BaseEnv):
         if isinstance(action, (np.ndarray, Tensor)):
             action = action.item()
 
-        motion = self.motions[action]
-        current_position = self.maze.objects.agent.positions[0]
-        new_position: Position = (
-            current_position[0] + motion[0],
-            current_position[1] + motion[1],
-        )
+        motion = np.array(self.motions[action])
+        current_position = np.array(self.maze.objects.agent.positions[0])
+        new_position = current_position + motion
         valid = self._are_valid([new_position])[0]
 
         if valid:
             self.maze.objects.agent.positions = [new_position]
         next_state = self.maze.to_value()
 
-        if self.maze.objects.agent.positions[0][1] == 4:
-            self.left_counter += 1
-
         info = {
             "valid_actions": self._get_valid_actions(),
             "original_state": next_state,
             "agent_position": ptu.from_numpy(
-                np.asarray(self.maze.objects.agent.positions[0])
+                self.maze.objects.agent.positions[0]
             ).unsqueeze(0),
-            "left_counter": self.left_counter,
         }
 
         if self.is_goal_state():
@@ -126,20 +118,18 @@ class MazeEnv(BaseEnv):
         self.prev_type_image = None
         _, info = super().reset(seed=seed, options=options)
         self.maze.objects.agent.positions = self.start_position
-        self.maze.objects.goal.positions = self.goal_positions
         next_state = self.maze.to_value()
         info["valid_actions"] = self._get_valid_actions()
         info["original_state"] = next_state
         info["agent_position"] = ptu.from_numpy(
             self.maze.objects.agent.positions[0]
         ).unsqueeze(0)
-        info["left_counter"] = self.left_counter = 0
 
         if self.render_mode == "human":
             self._render_frame()
         return next_state.flatten(), info
 
-    def _are_valid(self, positions: list[Position]) -> list[bool]:
+    def _are_valid(self, positions: list[np.array]) -> list[bool]:
         """
         Checks whether a position is valid.
         Args:
@@ -181,16 +171,14 @@ class MazeEnv(BaseEnv):
 
     def is_goal_state(self) -> bool:
         """
-        Checks whether a position is a goal position.
-        Args:
-            position: the position to check.
+        Checks whether the current position is a goal position.
 
         Returns:
             boolean indicating whether the position is a goal position.
         """
-        position = self.maze.objects.agent.positions[0]
+        agent_position = self.maze.objects.agent.positions[0]
         for pos in self.maze.objects.goal.positions:
-            if position[0] == pos[0] and position[1] == pos[1]:
+            if np.all(agent_position == pos):
                 return True
 
         return False

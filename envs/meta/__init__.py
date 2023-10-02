@@ -99,17 +99,10 @@ register_partial("big-item-maze-partial-v0", "big-item-maze-fully-v0")
 register_partial("double-map-10-partial-v0", "double-map-10-v0")
 
 # Meta maps
+register(
+    "item-meta-maze-v0",
+    entry_point="envs.meta.maze.MultitaskMazeEnv:MultitaskMazeEnv",
+    max_episode_steps=MAX_MAZE_STEPS,
+)
 
-
-def register_meta(name: str, partial_name: str):
-    register(
-        name,
-        entry_point="envs.meta.maze.MultitaskMazeEnv:MultitaskMazeEnv",
-        kwargs=dict(env_id=partial_name),
-        max_episode_steps=MAX_MAZE_STEPS,
-    )
-
-
-register_meta("item-maze-meta-partial-v0", "item-maze-partial-v0")
-register_meta("big-item-maze-meta-partial-v0", "big-item-maze-partial-v0")
-register_meta("double-map-10-meta-partial-v0", "double-map-10-partial-v0")
+register_partial("item-meta-maze-partial-v0", "item-meta-maze-v0")

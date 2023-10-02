@@ -33,24 +33,76 @@ def get_sentence(word: str) -> list[str]:
     ]
 
 
-def main(file_path: str, out_file: str):
+def anti_direction(direction: int) -> int:
+    return ((direction + 1) % 2) + 2 * (direction // 2)
+
+
+def get_task_configs(config_type: str):
+    if config_type == "one":
+        yield {
+            "short_direction": 2,
+            "short_hook_direction": 2,
+            "long_direction": 3,
+            "long_hook_direction": 3,
+        }
+    elif config_type == "two":
+        yield {
+            "short_direction": 2,
+            "short_hook_direction": 2,
+            "long_direction": 3,
+            "long_hook_direction": 3,
+        }
+        yield {
+            "short_direction": 3,
+            "short_hook_direction": 3,
+            "long_direction": 2,
+            "long_hook_direction": 2,
+        }
+    elif config_type == "all":
+        for short_direction in range(4):
+            for short_hook_direction in range(4):
+                for long_direction in range(4):
+                    for long_hook_direction in range(4):
+                        if (
+                            short_direction == long_direction
+                            or short_hook_direction == long_direction
+                            or anti_direction(short_direction) == short_hook_direction
+                            or anti_direction(long_direction) == long_hook_direction
+                        ):
+                            continue
+                        yield {
+                            "short_direction": short_direction,
+                            "short_hook_direction": short_hook_direction,
+                            "long_direction": long_direction,
+                            "long_hook_direction": long_hook_direction,
+                        }
+
+
+def main(file_path: str, out_file: str, config_type: str = "all"):
     with open(file_path, "r") as file:
         words = json.load(file)
 
     with open("progress.csv", "w") as file:
-        file.write("word,sentence\n")
+        file.write("word,sentence,metadata\n")
 
     words = [[word[0] for word in word_list] for word_list in words]
 
     sentences = []
-    for word_index, word_list in enumerate(words):
-        sentences.append([])
-        for word in word_list:
-            for sentence in get_sentence(word):
-                with open("progress.csv", "a") as file:
-                    file.write(f'"{word}","{sentence}"\n')
+    for task_dict in get_task_configs(config_type):
+        for word_index, word_list in enumerate(words):
+            for word in word_list:
+                for sentence in get_sentence(word):
+                    filtered_sentence = filter_sentence(sentence)
+                    with open("progress.csv", "a") as file:
+                        file.write(
+                            f'"{word}","{filtered_sentence}","{json.dumps(task_dict)}\n'
+                        )
 
-                sentences[word_index].append([filter_sentence(sentence), word])
+                    task = dict.copy(task_dict)
+                    task["blocked"] = word_index == 0
+                    task["sentence"] = filtered_sentence
+                    task["word"] = word
+                    sentences.append(task)
 
     with open(out_file, "w") as file:
         json.dump(sentences, file)
@@ -69,6 +121,6 @@ def filter_sentence(sentence: str) -> str:
 
 if __name__ == "__main__":
     main(
-        "embeddings/light_vs_heavy/words.json",
-        "embeddings/light_vs_heavy/right_sentences.json",
+        "embeddings/words.json",
+        "embeddings/all_directions.json",
     )

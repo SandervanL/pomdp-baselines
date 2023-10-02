@@ -45,7 +45,7 @@ class BaseEnv(gym.Env, ABC):
             max_width: the maximum width of the image.
 
         Returns:
-            the rendered image.s
+            the rendered image.
         """
         img = self.get_image()
         img = np.asarray(img).astype(np.uint8)

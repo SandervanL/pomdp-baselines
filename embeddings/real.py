@@ -9,7 +9,6 @@ import torch
 from torch import Tensor
 import dill
 
-SentenceList = tuple[list[tuple[str, str]], list[tuple[str, str]]]
 Direction = Literal["north", "south", "west", "east"]
 
 
@@ -31,48 +30,46 @@ class MazeTask:
 
 
 def create_sentence_embedding(
-    inputs: SentenceList,
+    sentences: list[dict],
     embedder: Callable[[str], Tensor],
 ) -> list[MazeTask]:
     tasks = [
-        MazeTask(
-            embedding=embedder(sentence.strip().lower()),
-            blocked=index == 0,
-            task_type=index,
-            word=word.strip().lower(),
-            sentence=sentence.strip().lower(),
-            short_direction=2,
-            short_hook_direction=2,
-            long_direction=3,
-            long_hook_direction=3,
-        )
-        for index, sentence_list in enumerate(inputs)
-        for sentence, word in sentence_list
-        if len(sentence.strip()) > 0
+        MazeTask(embedding=embedder(sentence["sentence"].strip().lower()), **sentence)
+        for sentence in sentences
     ]
 
     return [task for task in tasks if task.embedding is not None]
 
 
+word_buffer = []
+
+
+def task_hash(task: dict) -> int:
+    global word_buffer
+    word = task["word"]
+    if word in word_buffer:
+        word_index = word_buffer.index(word)
+    else:
+        word_buffer.append(word)
+        word_index = len(word_buffer) - 1
+    return (
+        (int(task["blocked"]))
+        | (int(task["task_type"]) << 8)
+        | (int(task["short_direction"]) << 16)
+        | (int(task["short_hook_direction"]) << 24)
+        | (int(task["long_direction"]) << 32)
+        | (int(task["long_hook_direction"]) << 40)
+        | (word_index << 48)
+    )
+
+
 def create_word_embedding(
-    inputs: SentenceList, embedder: Callable[[str], Tensor]
+    tasks: list[dict], embedder: Callable[[str], Tensor]
 ) -> list[MazeTask]:
-    unique_words = [{task[1] for task in tasks} for tasks in inputs]
+    unique_words = {task_hash(task): task for task in tasks}
     tasks = [
-        MazeTask(
-            embedding=embedder(word.strip().lower()),
-            blocked=index == 0,
-            task_type=index,
-            word=word.strip().lower(),
-            sentence=word.strip().lower(),
-            short_direction=2,
-            short_hook_direction=2,
-            long_direction=3,
-            long_hook_direction=3,
-        )
-        for index, sentence_list in enumerate(unique_words)
-        for word in sentence_list
-        if len(word.strip()) > 0
+        MazeTask(embedding=embedder(task["word"].strip().lower()), **task)
+        for task in unique_words.values()
     ]
 
     return [task for task in tasks if task.embedding is not None]
@@ -134,7 +131,7 @@ def main(
     folder: str, input_file: str, use_word2vec: bool = False, sentences: bool = True
 ):
     with open(os.path.join(folder, input_file), "r") as file:
-        inputs: SentenceList = json.load(file)
+        inputs: list[dict] = json.load(file)
 
     embedder = get_word2vec_embedding if use_word2vec else get_simcse_embedding
     creator = create_sentence_embedding if sentences else create_word_embedding
@@ -148,7 +145,7 @@ def main(
 
 
 if __name__ == "__main__":
-    folder = "embeddings/one_direction/"
+    folder = "embeddings/two_directions/"
     input_file = "sentences.json"
     for use_word2vec in [True, False]:
         for sentences in [True, False]:

@@ -2,8 +2,8 @@ seed: 73
 cuda: 0 # use_gpu
 env:
   env_type: meta
-  env_name: double-map-10-meta-partial-v0
-  task_file: embeddings/embeddings/perfect_one_direction.dill
+  env_name: item-meta-maze-partial-v0
+  task_file: embeddings/embeddings/one_direction/sentences_simcse.dill
   max_rollouts_per_task: 1
   task_selection: even # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
                        # "random" make random train/eval split (for sentences)

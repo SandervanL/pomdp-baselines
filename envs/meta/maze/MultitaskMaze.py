@@ -156,34 +156,3 @@ def to_right(direction: int) -> int:
         return 0
     if direction == 3:
         return 1
-
-
-def main():
-    for long_direction in range(4):
-        for long_hook_direction in range(4):
-            for short_direction in range(4):
-                for short_hook_direction in range(4):
-                    if (
-                        short_direction == long_direction
-                        or short_hook_direction == long_direction
-                        or anti_direction(short_direction) == short_hook_direction
-                        or anti_direction(long_direction) == long_hook_direction
-                    ):
-                        continue
-                    task = MazeTask(
-                        None,
-                        False,
-                        0,
-                        "",
-                        "",
-                        short_direction,
-                        short_hook_direction,
-                        long_direction,
-                        long_hook_direction,
-                    )
-                    maze = build_maze(task)
-                    print("breakpoint")
-
-
-if __name__ == "__main__":
-    main()
