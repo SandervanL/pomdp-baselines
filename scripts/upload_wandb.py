@@ -74,13 +74,13 @@ def insert_wandb(csv_file: str) -> None:
 
 
 def main():
-    group = "embedding-full"
-    root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\embedding-tests\\{group}-logs"
+    # group = "embedding-full"
+    # root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\embedding-tests\\{group}-logs"
     project = "Language Assistance"
     is_old = False
 
     for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
-        if "seed-45" not in csv_file:
+        if "seed-46" not in csv_file:
             continue
         print(f"CSV File: {csv_file}")
         print(f"YAML File: {yaml_file}")

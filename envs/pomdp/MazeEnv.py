@@ -49,7 +49,7 @@ class MazeEnv(BaseEnv):
         self.window_size = 100
         self.train_mode = False
         self.image = None
-        self.prev_type_image = None
+        self.total_image = None
 
     def step(
         self, action: ActType
@@ -115,7 +115,6 @@ class MazeEnv(BaseEnv):
             if options is None
             else ("train_mode" in options and options["train_mode"] == True)
         )
-        self.prev_type_image = None
         _, info = super().reset(seed=seed, options=options)
         self.maze.objects.agent.positions = self.start_position
         next_state = self.maze.to_value()
@@ -208,15 +207,14 @@ class MazeEnv(BaseEnv):
             self.clock = pygame.time.Clock()
         pygame.event.pump()
 
-        if self.prev_type_image is None:
-            self.prev_type_image = self.image
-
-        if self.train_mode:
-            new_image = np.concatenate([self.image, self.prev_type_image], axis=0)
+        if self.total_image is None:
+            self.total_image = np.concatenate([self.image, self.image], axis=0)
+        elif self.train_mode:
+            self.total_image[: self.image.shape[0], :, :] = self.image
         else:
-            new_image = np.concatenate([self.prev_type_image, self.image], axis=0)
+            self.total_image[self.image.shape[0] :, :, :] = self.image
 
-        surf = pygame.surfarray.make_surface(np.rot90(new_image, axes=[1, 0]))
+        surf = pygame.surfarray.make_surface(np.rot90(self.total_image, axes=[1, 0]))
         self.window.blit(surf, (0, 0))
         pygame.display.update()
 

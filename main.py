@@ -36,10 +36,10 @@ flags.DEFINE_boolean("debug", False, "debug mode")
 flags.DEFINE_float("gamma", None, "discount factor")
 flags.DEFINE_string("render_mode", None, "render mode ('null', 'human' or 'rgb_array')")
 flags.DEFINE_integer(
-    "embedding_obs_init", 0, "How the embedding is appended to the obs"
+    "embedding_obs_init", None, "How the embedding is appended to the obs"
 )
 flags.DEFINE_integer(
-    "embedding_rnn_init", 0, "How the embedding is initialized to the RNN"
+    "embedding_rnn_init", None, "How the embedding is initialized to the RNN"
 )
 
 flags.FLAGS(sys.argv)

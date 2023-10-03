@@ -3,6 +3,7 @@ from functools import reduce
 from typing import Optional
 
 import numpy as np
+from gymnasium import Env
 
 from envs.meta.maze.MultitaskMaze import MazeTask
 from .Learner import Learner, EvaluationResults
@@ -49,68 +50,31 @@ class MetaLearner(Learner):
                 and num_train_tasks >= num_eval_tasks > 0
                 and len(all_tasks_indices) >= num_train_tasks + num_eval_tasks
             )
+            self.num_eval_tasks = None
             assert train_test_split_present ^ eval_tasks_present
 
+            shuffled_tasks = np.random.permutation(all_tasks_indices)
             if task_selection == "random":
                 if train_test_split_present:
                     num_train_tasks = int(train_test_split * len(all_tasks_indices))
                     num_eval_tasks = len(all_tasks_indices) - num_train_tasks
 
-                shuffled_tasks = np.random.permutation(all_tasks_indices)
                 self.train_tasks = shuffled_tasks[:num_train_tasks]
                 self.eval_tasks = shuffled_tasks[-num_eval_tasks:]
             elif task_selection == "even":
-                self.train_tasks = all_tasks_indices
-                self.eval_tasks = all_tasks_indices
-            elif task_selection == "random-word":
-                # Select all words
-                tasks: list[MazeTask] = self.train_env.get_wrapper_attr(
-                    "get_all_tasks"
-                )()
-                tasks_by_word_dict: dict[str, list[int]] = defaultdict(lambda: [])
-                for index, task in enumerate(tasks):
-                    tasks_by_word_dict[task.word].append(index)
-                words = list(tasks_by_word_dict.keys())
-
-                # Get how many tasks to use for training and evaluation
-                if train_test_split_present:
-                    num_train_words = int(train_test_split * len(words))
-                    num_eval_words = len(words) - num_train_words
-                else:
+                self.train_tasks = shuffled_tasks
+                self.eval_tasks = shuffled_tasks
+                if num_eval_tasks is not None:
                     assert (
-                        0 < num_eval_tasks <= num_train_tasks
-                        and num_eval_tasks + num_train_tasks <= len(words)
+                        num_eval_tasks <= len(shuffled_tasks)
+                        and num_eval_tasks % 2 == 0
                     )
-                    num_train_words = num_train_tasks
-                    num_eval_words = num_eval_tasks
-
-                shuffled_tasks = np.random.permutation(words)
-                train_words = shuffled_tasks[:num_train_words]
-                eval_words = shuffled_tasks[-num_eval_words:]
-
-                # Get the tasks for each word
-                self.train_tasks = np.array([], dtype=np.int32)
-                self.eval_tasks = np.array([], dtype=np.int32)
-                for word in train_words:
-                    self.train_tasks = np.concatenate(
-                        (self.train_tasks, tasks_by_word_dict[word])
-                    )
-                for word in eval_words:
-                    self.eval_tasks = np.concatenate(
-                        (self.eval_tasks, tasks_by_word_dict[word])
-                    )
-
-            elif task_selection in "random-type":
-                tasks: list[MazeTask] = self.train_env.get_wrapper_attr(
-                    "get_all_tasks"
-                )()
-                tasks_by_class_dict: dict[int | str, list[int]] = defaultdict(
-                    lambda: []
+                    self.num_eval_tasks = num_eval_tasks
+            elif task_selection in ["random-type", "random-word"]:
+                task_key = "word" if task_selection == "random-word" else "task_type"
+                tasks_by_class: list[list[int]] = get_tasks_by_type(
+                    self.train_env, task_key
                 )
-                for index, task in enumerate(tasks):
-                    tasks_by_class_dict[task.task_type].append(index)
-
-                tasks_by_class: list[list[int]] = list(tasks_by_class_dict.values())
                 self.train_tasks = np.array([])
                 self.eval_tasks = np.array([])
                 for tasks in tasks_by_class:
@@ -150,7 +114,21 @@ class MetaLearner(Learner):
         if do_train_eval:
             train_results = self.evaluate(self.train_tasks[: len(self.eval_tasks)])
 
-        eval_results = self.evaluate(self.eval_tasks)
+        eval_tasks = self.eval_tasks
+        if self.num_eval_tasks is not None:
+            task_list = get_tasks_by_type(self.eval_env, "task_type")
+            eval_tasks = np.concatenate(
+                [
+                    np.random.choice(
+                        task_list[0], replace=False, size=self.num_eval_tasks // 2
+                    ),
+                    np.random.choice(
+                        task_list[1], replace=False, size=self.num_eval_tasks // 2
+                    ),
+                ]
+            )
+
+        eval_results = self.evaluate(eval_tasks)
         if self.eval_stochastic:
             eval_sto_results = self.evaluate(self.eval_tasks, deterministic=False)
 
@@ -316,3 +294,12 @@ class MetaLearner(Learner):
             )
 
         return eval_results
+
+
+def get_tasks_by_type(env: Env, key: str = "task_type") -> list[list[int]]:
+    tasks: list[MazeTask] = env.get_wrapper_attr("get_all_tasks")()
+    tasks_by_class_dict: dict[int, list[int]] = defaultdict(lambda: [])
+    for index, task in enumerate(tasks):
+        tasks_by_class_dict[getattr(task, key)].append(index)
+
+    return list(tasks_by_class_dict.values())
