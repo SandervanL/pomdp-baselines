@@ -295,6 +295,7 @@ class Learner:
                 self.log_train_stats(train_stats)
 
         last_eval_num_iters = current_num_iters = 0
+        last_eval_env_steps = 0
         while self._n_env_steps_total < self.n_env_steps_total:
             # collect data from num_rollouts_per_iter train tasks:
             env_steps = self.collect_rollouts(num_rollouts=self.num_rollouts_per_iter)
@@ -311,11 +312,13 @@ class Learner:
             current_num_iters = self._n_env_steps_total // (
                 self.num_rollouts_per_iter * self.max_trajectory_len
             )
-            if (
-                current_num_iters != last_eval_num_iters
-                and current_num_iters % self.log_interval == 0
-            ):
-                last_eval_num_iters = current_num_iters
+            if last_eval_env_steps + self.log_interval <= self._n_env_steps_total:
+                # if (
+                #     current_num_iters != last_eval_num_iters
+                #     and current_num_iters % self.log_interval == 0
+                # ):
+                #     last_eval_num_iters = current_num_iters
+                last_eval_env_steps = self._n_env_steps_total
                 perf = self.log()
                 if (
                     self.save_interval > 0

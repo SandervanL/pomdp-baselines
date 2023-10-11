@@ -6,36 +6,62 @@ from pandas.errors import ParserError
 import wandb
 
 import os
-import yaml
-import csv
 
 from ruamel.yaml import YAML
 
 
 def find_csv_and_yaml_pairs(root_dir):
     for dirpath, dirnames, filenames in os.walk(root_dir):
-        if len(dirnames) == 1 and dirnames[0] == "save":
-            csv_file = None
-            yaml_file = None
+        csv_file = None
+        yaml_file = None
 
-            for filename in filenames:
-                if filename.endswith(".csv"):
-                    csv_file = os.path.join(dirpath, filename)
-                elif filename.endswith(".yml") or filename.endswith(".yaml"):
-                    yaml_file = os.path.join(dirpath, filename)
+        for filename in filenames:
+            if filename.endswith(".csv"):
+                csv_file = os.path.join(dirpath, filename)
+            elif filename.endswith(".yml") or filename.endswith(".yaml"):
+                yaml_file = os.path.join(dirpath, filename)
 
-            if csv_file and yaml_file:
-                yield csv_file, yaml_file
+        if csv_file and yaml_file:
+            yield csv_file, yaml_file
 
 
-def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> None:
+groups = {
+    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/sentences_word2vec.dill": "Sentences Word2vec",
+    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/sentences_simcse.dill": "Sentences SimCSE",
+    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/words_word2vec.dill": "Words Word2Vec",
+    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/words_simcse.dill": "Words SimCSE",
+}
+
+# sentences_simcse.dill-44 2727340
+# sentences_word2vec.dill-45 2727342
+# sentences_simcse.dill-45 2727344
+# sentences_word2vec.dill-46 2727346
+# words_word2vec.dill-46 2727347
+# words_simcse.dill-46 2727349
+# Everything above 47 failed immediately (except sentences_word2vec.dill-47)
+
+
+def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> bool:
     yaml = YAML()
     with open(yaml_path, "r") as file:
         config = yaml.load(file)
 
+    seed = config["seed"]
+    if config["env"]["task_file"] not in groups:
+        print("breakpoint")
+    group = groups[config["env"]["task_file"]]
+
+    if not (
+        seed in [42, 43]
+        or (seed == 44 and group != "Sentences SimCSE")
+        or (seed == 45 and "Sentences" not in group)
+    ):
+        return False
+
     config["old"] = is_old
     config["file"] = yaml_path
     wandb.init(project=project, group=group, config=config)
+    return True
 
 
 def insert_wandb(csv_file: str) -> None:
@@ -74,17 +100,20 @@ def insert_wandb(csv_file: str) -> None:
 
 
 def main():
-    # group = "embedding-full"
-    # root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Random\\embedding-tests\\{group}-logs"
-    project = "Language Assistance"
+    group = "Words Word2vec"
+    root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-type\\embedding-type-logs"
+    project = "Embedding Type"
     is_old = False
 
     for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
-        if "seed-46" not in csv_file:
-            continue
         print(f"CSV File: {csv_file}")
         print(f"YAML File: {yaml_file}")
-        init_wandb(yaml_file, project, is_old, group)
+        if "rnn-0" not in csv_file or "obs-1" not in csv_file:
+            continue
+
+        success = init_wandb(yaml_file, project, is_old, group)
+        if not success:
+            continue
         insert_wandb(csv_file)
         wandb.finish()
         # You can process the CSV and YAML files here as needed

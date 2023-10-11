@@ -14,7 +14,7 @@ from pathlib import Path
 import psutil
 
 from torchkit.pytorch_utils import set_gpu_mode
-from policies.learner import Learner, LEARNER_CLASS
+from policies.learner import LEARNER_CLASS
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string("cfg", None, "path to configuration file")
@@ -41,10 +41,15 @@ flags.DEFINE_integer(
 flags.DEFINE_integer(
     "embedding_rnn_init", None, "How the embedding is initialized to the RNN"
 )
+flags.DEFINE_string("task_file", None, "The file to use for the embeddings.")
+flags.DEFINE_string(
+    "task_selection", None, "How to select the tasks for train and eval."
+)
 
 flags.FLAGS(sys.argv)
 yaml = YAML()
-v = yaml.load(open(FLAGS.cfg))
+with open(FLAGS.cfg, "r") as file:
+    v = yaml.load(file)
 
 # overwrite config params
 if FLAGS.env is not None:
@@ -53,6 +58,8 @@ if FLAGS.algo is not None:
     v["policy"]["algo_name"] = FLAGS.algo
 if FLAGS.render_mode is not None:
     v["env"]["render_mode"] = None if FLAGS.render_mode == "null" else FLAGS.render_mode
+if FLAGS.task_selection is not None:
+    v["env"]["task_selection"] = FLAGS.task_selection
 
 seq_model, algo = v["policy"]["seq_model"], v["policy"]["algo_name"]
 assert seq_model in ["mlp", "lstm", "gru", "lstm-mlp", "gru-mlp"]
@@ -77,6 +84,8 @@ if FLAGS.cuda is not None:
     v["cuda"] = FLAGS.cuda
 if FLAGS.oracle:
     v["env"]["oracle"] = True
+if FLAGS.task_file is not None:
+    v["env"]["task_file"] = FLAGS.task_file
 
 # system: device, threads, seed, pid
 seed = v["seed"]

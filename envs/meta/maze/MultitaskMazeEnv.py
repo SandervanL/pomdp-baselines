@@ -64,9 +64,6 @@ class MultitaskMazeEnv(MazeEnv):
 
         info["left_counter"] = self.left_counter
         if "success" in info:
-            print(
-                f"Impassable: {self.maze.objects.item.impassable}. Agent pos: {self.maze.objects.agent.positions[0]}"
-            )
             info["success"] = self.is_right_goal()
         return data
 
@@ -91,7 +88,6 @@ class MultitaskMazeEnv(MazeEnv):
             self.task = self.tasks[task]
         self.maze = MultitaskMaze(self.task)
         self.blocked = self.maze.blocked
-        print(f"Reset task. Blocked: {self.blocked}. Sentence: {self.task.sentence}")
 
     def get_current_task(self):
         return self.task

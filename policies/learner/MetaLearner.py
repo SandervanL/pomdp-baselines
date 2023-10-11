@@ -51,10 +51,10 @@ class MetaLearner(Learner):
                 and len(all_tasks_indices) >= num_train_tasks + num_eval_tasks
             )
             self.num_eval_tasks = None
-            assert train_test_split_present ^ eval_tasks_present
 
             shuffled_tasks = np.random.permutation(all_tasks_indices)
             if task_selection == "random":
+                assert train_test_split_present ^ eval_tasks_present
                 if train_test_split_present:
                     num_train_tasks = int(train_test_split * len(all_tasks_indices))
                     num_eval_tasks = len(all_tasks_indices) - num_train_tasks
@@ -70,29 +70,21 @@ class MetaLearner(Learner):
                         and num_eval_tasks % 2 == 0
                     )
                     self.num_eval_tasks = num_eval_tasks
-            elif task_selection in ["random-type", "random-word"]:
+            elif task_selection == "random-word":
+                assert train_test_split_present
                 task_key = "word" if task_selection == "random-word" else "task_type"
-                tasks_by_class: list[list[int]] = get_tasks_by_type(
-                    self.train_env, task_key
-                )
-                self.train_tasks = np.array([])
-                self.eval_tasks = np.array([])
-                for tasks in tasks_by_class:
-                    if train_test_split_present:
-                        num_train_tasks = int(train_test_split * len(tasks))
-                        num_eval_tasks = len(tasks) - num_train_tasks
-                    else:
-                        assert (
-                            0 < num_eval_tasks <= num_train_tasks
-                            and num_train_tasks + num_eval_tasks <= len(tasks)
-                        )
-                    shuffled_tasks = np.random.permutation(tasks)
-                    self.train_tasks = np.concatenate(
-                        (self.train_tasks, shuffled_tasks[:num_train_tasks])
-                    )
-                    self.eval_tasks = np.concatenate(
-                        (self.eval_tasks, shuffled_tasks[-num_eval_tasks:])
-                    )
+
+                # Find which tasks belong to the same word
+                tasks_by_class = np.array(get_tasks_by_type(self.train_env, task_key))
+                shuffled_words = np.random.permutation(list(range(len(tasks_by_class))))
+
+                # Select which words to include in test and train
+                num_train_words = int(train_test_split * len(tasks_by_class))
+                train_words = shuffled_words[:num_train_words]
+                eval_words = shuffled_words[num_train_words:]
+
+                self.train_tasks = tasks_by_class[train_words].reshape(-1)
+                self.eval_tasks = tasks_by_class[eval_words].reshape(-1)
         else:
             # NOTE: This is on-policy varibad's setting, i.e. unlimited training tasks
             assert num_tasks is num_train_tasks is None

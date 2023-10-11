@@ -3,21 +3,17 @@ cuda: 0 # use_gpu
 env:
   env_type: meta
   env_name: item-meta-maze-partial-v0
-  task_file: embeddings/embeddings/one_direction/words_simcse.dill
+  task_file: embeddings/embeddings/one_direction/sentences_simcse.dill
   max_rollouts_per_task: 1
-  task_selection: even # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
+  task_selection: "random-word" # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
                        # "random" make random train/eval split (for sentences)
-                       # "random-type" make random train/eval split within each type (no use)
                        # "random-word" make random train/eval split throughout the words (for unknown word evaluation)
-  render_mode: human
-
-  train_test_split: 0.8 # train/test split ratio
   valid_actions: false
-  num_eval_tasks: 10 # number of tasks to evaluate on
+  train_test_split: 0.8
 
 train:
   # 1000*100 = 10k steps
-  num_iters: 250 # number meta-training iterates
+  num_iters: 300 # number meta-training iterates
   num_init_rollouts_pool: 64 # before training
   num_rollouts_per_iter: 1
 
@@ -30,7 +26,7 @@ train:
 
 eval:
   eval_stochastic: false # also eval stochastic policy
-  log_interval: 1 # num of iters
+  log_interval: 200 # num of iters
   save_interval: -1
   log_tensorboard: true
   eval_on_train_tasks: false # eval on train tasks
@@ -42,7 +38,7 @@ policy:
 
   action_embedding_size: 8
   observ_embedding_size: 32
-  reward_embedding_size: 0 # no reward input
+  reward_embedding_size: 8
   rnn_hidden_size: 128
 
   dqn_layers: [ 128, 128 ]
@@ -51,8 +47,8 @@ policy:
   gamma: 0.93
   tau: 0.005
 
-  embedding_obs_init: 0  # 0 for not appending task, 1: append to observation, 2: append to state proxy, 3: both
-  embedding_rnn_init: 1 # 0 creates zero embedding for cell & state, 1: hidden state, 2: cell state, 3: both
+  embedding_obs_init: 1  # 0 for not appending task, 1: append to observation, 2: append to state proxy, 3: both
+  embedding_rnn_init: 0 # 0 creates zero embedding for cell & state, 1: hidden state, 2: cell state, 3: both
 
   #  "no" returns an empty tensor,
   #  "directly" returns the same tensor,

@@ -11,7 +11,7 @@ import vizdoom
 import omg
 
 ASSET_PATH = os.path.join(os.path.dirname(__file__), "assets", "vizdoom")
-
+assert False
 # Texture set A.
 TEXTURES_SET_A = [
     line.strip() for line in open(os.path.join(ASSET_PATH, "texture_set_a.txt"))

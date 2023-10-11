@@ -67,12 +67,17 @@ def create_word_embedding(
     tasks: list[dict], embedder: Callable[[str], Tensor]
 ) -> list[MazeTask]:
     unique_words = {task_hash(task): task for task in tasks}
-    tasks = [
-        MazeTask(embedding=embedder(task["word"].strip().lower()), **task)
-        for task in unique_words.values()
-    ]
+    tasks = []
+    for task in unique_words.values():
+        new_task = task.copy()
+        new_task["sentence"] = task["word"]
+        maze_task = MazeTask(
+            embedding=embedder(task["word"].strip().lower()), **new_task
+        )
+        if maze_task.embedding is not None:
+            tasks.append(maze_task)
 
-    return [task for task in tasks if task.embedding is not None]
+    return tasks
 
 
 simcse_model = None
@@ -145,8 +150,9 @@ def main(
 
 
 if __name__ == "__main__":
-    folder = "embeddings/two_directions/"
+    folders = ["embeddings/two_directions/", "embeddings/one_direction/"]
     input_file = "sentences.json"
-    for use_word2vec in [True, False]:
-        for sentences in [True, False]:
-            main(folder, input_file, use_word2vec, sentences)
+    for folder in folders:
+        for use_word2vec in [True, False]:
+            for sentences in [True, False]:
+                main(folder, input_file, use_word2vec, sentences)
