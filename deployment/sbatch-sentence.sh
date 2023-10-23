@@ -4,10 +4,10 @@
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1	          # this is equivalent to number of NODES
 ##SBATCH --gpus-per-task=4  # comment out if not needing GPUs
-#SBATCH --cpus-per-task=2     # usually recommended in powers of 2 or divisible by 2
+#SBATCH --cpus-per-task=16     # usually recommended in powers of 2 or divisible by 2
 #SBATCH --partition=compute	  # possible partitions are: <compute gpu memory> The standard is compute, memory is for high memory requirements.
 ##SBATCH --mem-per-gpu=20GB	  # only if requesting gpus, also mutually exclusive with --mem and --mem-per-cpu
-#SBATCH --mem=8G	          # how much RAM is your job going to require
+#SBATCH --mem=128G	          # how much RAM is your job going to require
 #SBATCH --account=Education-EEMCS-MSc-CS	# can comment out and than uses the default innovation account that all scientific stuff have access to.
 
 # Setup modules
@@ -36,7 +36,7 @@ echo "project path: ${project_path}"
 echo "Task selection $3, Seed $2"
 
 # Call your script
-srun python $project_path/main.py --cfg $project_path/configs/meta/maze/sentences.yml --seed $2 --task_selection $3 --render_mode null
+srun python $project_path/main.py --cfg $project_path/configs/meta/maze/sentences.yml --seed $2 --task_selection $3 --render_mode null --num_cpus 16
 
 # the other part of view GPU resource utilization:
 #/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"

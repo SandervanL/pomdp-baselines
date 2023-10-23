@@ -16,7 +16,7 @@ def find_csv_and_yaml_pairs(root_dir):
         yaml_file = None
 
         for filename in filenames:
-            if filename.endswith(".csv"):
+            if filename.endswith("progress.csv"):
                 csv_file = os.path.join(dirpath, filename)
             elif filename.endswith(".yml") or filename.endswith(".yaml"):
                 yaml_file = os.path.join(dirpath, filename)
@@ -26,10 +26,16 @@ def find_csv_and_yaml_pairs(root_dir):
 
 
 groups = {
-    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/sentences_word2vec.dill": "Sentences Word2vec",
-    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/sentences_simcse.dill": "Sentences SimCSE",
-    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/words_word2vec.dill": "Words Word2Vec",
-    "/home/sajvanleeuwen/embedding-type/deployment/../embeddings/embeddings/one_direction/words_simcse.dill": "Words SimCSE",
+    "sentences_word2vec.dill": "Sentences Word2vec",
+    "sentences_simcse.dill": "Sentences SimCSE",
+    "words_word2vec.dill": "Words Word2Vec",
+    "words_simcse.dill": "Words SimCSE",
+}
+
+groups_info = {
+    "sentences_simcse.dill": "Sentences",
+    "words_simcse.dill": "Words",
+    "perfect.dill": "Perfect",
 }
 
 # sentences_simcse.dill-44 2727340
@@ -46,17 +52,30 @@ def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> bool:
     with open(yaml_path, "r") as file:
         config = yaml.load(file)
 
-    seed = config["seed"]
-    if config["env"]["task_file"] not in groups:
-        print("breakpoint")
-    group = groups[config["env"]["task_file"]]
+    # For generalization
+    # selection = config["env"]["task_selection"]
+    # if selection == "random":
+    #     group = "Global"
+    # elif selection == "random-word":
+    #     group = "80% Within Words"
+    # else:
+    #     raise f"Unknown task selection {selection}"
 
-    if not (
-        seed in [42, 43]
-        or (seed == 44 and group != "Sentences SimCSE")
-        or (seed == 45 and "Sentences" not in group)
-    ):
-        return False
+    # For info dilution
+    # task_file = config["env"]["task_file"]
+    # task_name = None
+    # for key in groups_info.keys():
+    #     if key in task_file:
+    #         task_name = key
+    #         break
+    # if task_name is None:
+    #     raise f"Could not find group for {task_file}"
+    # group = groups_info[task_name]
+
+    # For embedding type tasks
+    # if config["env"]["task_file"] not in groups:
+    #     raise f"Could not find group for {config['env']['task_file']}"
+    # group = groups[config["env"]["task_file"]]
 
     config["old"] = is_old
     config["file"] = yaml_path
@@ -68,48 +87,70 @@ def insert_wandb(csv_file: str) -> None:
     try:
         df = pd.read_csv(csv_file)
     except ParserError:
-        print(f"Could not read from {csv_file}")
-        return
+        raise f"Could not read from {csv_file}"
 
     data_list = df.to_dict(orient="records")
-    prev_dict = {
-        "z/env_steps": 0,
-        "z/rl_steps": 0,
-    }
-    counter = 0
+    old_data = data_list[0]
+    old_data["metrics/cumulative_regret_blocked"] = 0
+    old_data["metrics/cumulative_regret_unblocked"] = 0
+    old_data["metrics/cumulative_regret_total"] = 0
+    old_data["metrics/cumulative_regret_bayesian"] = 0
+
+    previous_env_steps = 6000
+    result_table = None
     for index, data in enumerate(data_list):
-        filtered_data = {
-            key: (value if not math.isnan(value) else prev_dict[key])
-            for key, value in data.items()
-            if not math.isnan(value) or key in prev_dict
+        # Update the data with the new values of the current row
+        new_data = {
+            key: (
+                old_data[key] if key not in data or math.isnan(data[key]) else data[key]
+            )
+            for key in old_data.keys()
         }
+        if not math.isnan(data["rl_loss/qf1_loss"]) or index == 0:
+            old_data = new_data
+            continue
 
-        # Fill some values with future values
-        for key, value in data.items():
-            if key not in filtered_data:
-                for _, next_data in enumerate(data_list, start=index + 1):
-                    if not math.isnan(next_data[key]):
-                        filtered_data[key] = next_data[key]
-                        break
+        # Append the old data first (new data is not seen for the previous steps)
+        if not math.isnan(old_data["z/env_steps"]):
+            if math.isnan(data["z/env_steps"]):
+                raise f"Found NaN in {csv_file} at index {index}"
+            for time in range(previous_env_steps, int(data["z/env_steps"]), 10):
+                old_data["z/env_steps"] = time
+                if result_table is None:
+                    result_table = pd.DataFrame(old_data, index=[0])
+                else:
+                    result_table = pd.concat(
+                        [result_table, pd.DataFrame([old_data])], ignore_index=True
+                    )
+                wandb.log(old_data)
+                previous_env_steps = time + 10
 
-            if key not in filtered_data or math.isnan(filtered_data[key]):
-                print("What is this")
-        counter += 1
-        prev_dict = filtered_data
-        wandb.log(filtered_data)
+        # Calculate the new values
+        blocked = data["metrics/total_steps_eval_blocked"]
+        unblocked = data["metrics/total_steps_eval_unblocked"]
+        blocked_regret = blocked - (
+            13 if "rnn-0" in csv_file and "obs-0" in csv_file else 10
+        )
+        unblocked_regret = unblocked - 4
+        new_data["metrics/regret"] = blocked_regret + unblocked_regret
+        new_data["metrics/cumulative_regret_blocked"] += blocked_regret
+        new_data["metrics/cumulative_regret_unblocked"] += unblocked_regret
+        new_data["metrics/cumulative_regret_total"] += blocked_regret + unblocked_regret
+        old_data = new_data
+
+    new_filename = csv_file.replace("progress.csv", "progress-filled.csv")
+    result_table.to_csv(new_filename, index=False)
 
 
 def main():
-    group = "Words Word2vec"
-    root_directory = f"C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-type\\embedding-type-logs"
-    project = "Embedding Type"
+    group = ""
+    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-consumption\\embedding-fifty-logs"
+    project = "Embedding Consumption 2"
     is_old = False
 
     for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
         print(f"CSV File: {csv_file}")
         print(f"YAML File: {yaml_file}")
-        if "rnn-0" not in csv_file or "obs-1" not in csv_file:
-            continue
 
         success = init_wandb(yaml_file, project, is_old, group)
         if not success:

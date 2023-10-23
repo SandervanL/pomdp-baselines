@@ -23,6 +23,7 @@ class MazeTask:
     task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
     word: str
     sentence: str
+    object_type: str
 
     # Directions of the map hallways
     short_direction: int

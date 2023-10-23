@@ -5,19 +5,20 @@ env:
   env_name: item-meta-maze-partial-v0
   task_file: embeddings/embeddings/one_direction/sentences_simcse.dill
   max_rollouts_per_task: 1
-  task_selection: "random-word" # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
+  task_selection: "random-within-word" # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
                        # "random" make random train/eval split (for sentences)
                        # "random-word" make random train/eval split throughout the words (for unknown word evaluation)
+                       # "random-within-word" make random train/eval split within each word (for unknown formulation evaluation)
   valid_actions: false
   train_test_split: 0.8
 
 train:
   # 1000*100 = 10k steps
-  num_iters: 300 # number meta-training iterates
+  num_iters: 1000 # number meta-training iterates
   num_init_rollouts_pool: 64 # before training
   num_rollouts_per_iter: 1
 
-  num_updates_per_iter: 5
+  num_updates_per_iter: 0.05
   # buffer params
   buffer_size: 1e6
   batch_size: 256 # to tune based on sampled_seq_len
@@ -28,7 +29,7 @@ eval:
   eval_stochastic: false # also eval stochastic policy
   log_interval: 200 # num of iters
   save_interval: -1
-  log_tensorboard: true
+  log_tensorboard: false
   eval_on_train_tasks: false # eval on train tasks
 
 policy:
@@ -38,7 +39,7 @@ policy:
 
   action_embedding_size: 8
   observ_embedding_size: 32
-  reward_embedding_size: 8
+  reward_embedding_size: 0
   rnn_hidden_size: 128
 
   dqn_layers: [ 128, 128 ]

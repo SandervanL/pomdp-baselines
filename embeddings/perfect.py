@@ -8,7 +8,7 @@ def one_direction_file():
     no_blockage = MazeTask(
         embedding=Tensor([0.0]),
         blocked=False,
-        task_type=1,
+        task_type=0,
         sentence="no",
         word="no",
         short_direction=2,
@@ -29,7 +29,7 @@ def one_direction_file():
     )
     tasks = [blockage, no_blockage]
 
-    with open("embeddings/perfect_one_direction.dill", "wb") as file:
+    with open("embeddings/one_direction/perfect.dill", "wb") as file:
         dill.dump(tasks, file)
 
 
@@ -48,7 +48,7 @@ def two_directions_file():
     blockage_left = MazeTask(
         embedding=Tensor([1.0, 0.0]),
         blocked=True,
-        task_type=0,
+        task_type=1,
         sentence="yesleft",
         word="yesleft",
         short_direction=2,
@@ -59,7 +59,7 @@ def two_directions_file():
     no_blockage_right = MazeTask(
         embedding=Tensor([0.0, 1.0]),
         blocked=False,
-        task_type=0,
+        task_type=2,
         sentence="noright",
         word="noright",
         short_direction=3,
@@ -70,7 +70,7 @@ def two_directions_file():
     blockage_right = MazeTask(
         embedding=Tensor([1.0, 1.0]),
         blocked=True,
-        task_type=0,
+        task_type=3,
         sentence="yesright",
         word="yesright",
         short_direction=3,
@@ -81,7 +81,7 @@ def two_directions_file():
 
     tasks = [no_blockage_left, blockage_left, no_blockage_right, blockage_right]
 
-    with open("embeddings/perfect_two_directions.dill", "wb") as file:
+    with open("embeddings/two_directions/perfect.dill", "wb") as file:
         dill.dump(tasks, file)
 
 
@@ -122,7 +122,7 @@ def all_directions():
                                 long_hook_direction=long_hook_direction,
                             )
                         )
-    with open("embeddings/perfect_all_directions.dill", "wb") as file:
+    with open("embeddings/all_directions/perfect.dill", "wb") as file:
         dill.dump(tasks, file)
 
 

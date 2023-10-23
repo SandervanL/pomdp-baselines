@@ -1,200 +1,146 @@
 import os
 import sys
 import time
-from datetime import datetime
+from copy import deepcopy
 
 t0 = time.time()
-import socket
-import numpy as np
-import torch
+from torch.multiprocessing import Pool
 from ruamel.yaml import YAML
 from absl import flags
-from utils import system, logger
-from pathlib import Path
-import psutil
 
-from torchkit.pytorch_utils import set_gpu_mode
-from policies.learner import LEARNER_CLASS
 
-FLAGS = flags.FLAGS
-flags.DEFINE_string("cfg", None, "path to configuration file")
-flags.DEFINE_string("env", None, "env_name")
-flags.DEFINE_string("algo", None, '["td3", "sac", "sacd"]')
+def define_flags():
+    flags.DEFINE_string("cfg", None, "path to configuration file")
+    flags.DEFINE_string("env", None, "env_name")
+    flags.DEFINE_string("algo", None, '["td3", "sac", "sacd"]')
 
-flags.DEFINE_boolean("automatic_entropy_tuning", None, "for [sac, sacd]")
-flags.DEFINE_float("target_entropy", None, "for [sac, sacd]")
-flags.DEFINE_float("entropy_alpha", None, "for [sac, sacd]")
+    flags.DEFINE_boolean("automatic_entropy_tuning", None, "for [sac, sacd]")
+    flags.DEFINE_float("target_entropy", None, "for [sac, sacd]")
+    flags.DEFINE_float("entropy_alpha", None, "for [sac, sacd]")
 
-flags.DEFINE_integer("seed", None, "seed")
-flags.DEFINE_integer("cuda", None, "cuda device id")
-flags.DEFINE_boolean(
-    "oracle",
-    False,
-    "whether observe the privileged information of POMDP, reduced to MDP",
-)
-flags.DEFINE_boolean("debug", False, "debug mode")
-flags.DEFINE_float("gamma", None, "discount factor")
-flags.DEFINE_string("render_mode", None, "render mode ('null', 'human' or 'rgb_array')")
-flags.DEFINE_integer(
-    "embedding_obs_init", None, "How the embedding is appended to the obs"
-)
-flags.DEFINE_integer(
-    "embedding_rnn_init", None, "How the embedding is initialized to the RNN"
-)
-flags.DEFINE_string("task_file", None, "The file to use for the embeddings.")
-flags.DEFINE_string(
-    "task_selection", None, "How to select the tasks for train and eval."
-)
+    flags.DEFINE_integer("seed", None, "seed")
+    flags.DEFINE_integer("cuda", None, "cuda device id")
+    flags.DEFINE_boolean(
+        "oracle",
+        False,
+        "whether observe the privileged information of POMDP, reduced to MDP",
+    )
+    flags.DEFINE_boolean("debug", False, "debug mode")
+    flags.DEFINE_float("gamma", None, "discount factor")
+    flags.DEFINE_string(
+        "render_mode", None, "render mode ('null', 'human' or 'rgb_array')"
+    )
+    flags.DEFINE_integer(
+        "embedding_obs_init", None, "How the embedding is appended to the obs"
+    )
+    flags.DEFINE_integer(
+        "embedding_rnn_init", None, "How the embedding is initialized to the RNN"
+    )
+    flags.DEFINE_string("task_file", None, "The file to use for the embeddings.")
+    flags.DEFINE_string(
+        "task_selection", None, "How to select the tasks for train and eval."
+    )
+    flags.DEFINE_float(
+        "num_updates_per_iter_float", None, "How many updates per environment step."
+    )
+    flags.DEFINE_integer(
+        "num_updates_per_iter_int", None, "How many updates per iteration."
+    )
+    flags.DEFINE_integer("num_cpus", None, "How many cpus to use.")
 
-flags.FLAGS(sys.argv)
-yaml = YAML()
-with open(FLAGS.cfg, "r") as file:
-    v = yaml.load(file)
+    flags.FLAGS(sys.argv)
 
-# overwrite config params
-if FLAGS.env is not None:
-    v["env"]["env_name"] = FLAGS.env
-if FLAGS.algo is not None:
-    v["policy"]["algo_name"] = FLAGS.algo
-if FLAGS.render_mode is not None:
-    v["env"]["render_mode"] = None if FLAGS.render_mode == "null" else FLAGS.render_mode
-if FLAGS.task_selection is not None:
-    v["env"]["task_selection"] = FLAGS.task_selection
 
-seq_model, algo = v["policy"]["seq_model"], v["policy"]["algo_name"]
-assert seq_model in ["mlp", "lstm", "gru", "lstm-mlp", "gru-mlp"]
-assert algo in ["td3", "sac", "sacd"]
+def load_config() -> dict:
+    FLAGS = flags.FLAGS
+    yaml = YAML()
+    with open(FLAGS.cfg, "r") as file:
+        v = yaml.load(file)
 
-if FLAGS.automatic_entropy_tuning is not None:
-    v["policy"][algo]["automatic_entropy_tuning"] = FLAGS.automatic_entropy_tuning
-if FLAGS.entropy_alpha is not None:
-    v["policy"][algo]["entropy_alpha"] = FLAGS.entropy_alpha
-if FLAGS.target_entropy is not None:
-    v["policy"][algo]["target_entropy"] = FLAGS.target_entropy
-if FLAGS.gamma is not None:
-    v["policy"]["gamma"] = FLAGS.gamma
-if FLAGS.embedding_obs_init is not None:
-    v["policy"]["embedding_obs_init"] = FLAGS.embedding_obs_init
-if FLAGS.embedding_rnn_init is not None:
-    v["policy"]["embedding_rnn_init"] = FLAGS.embedding_rnn_init
+    # overwrite config params
+    if FLAGS.env is not None:
+        v["env"]["env_name"] = FLAGS.env
+    if FLAGS.algo is not None:
+        v["policy"]["algo_name"] = FLAGS.algo
+    if FLAGS.render_mode is not None:
+        v["env"]["render_mode"] = (
+            None if FLAGS.render_mode == "null" else FLAGS.render_mode
+        )
+    if FLAGS.task_selection is not None:
+        v["env"]["task_selection"] = FLAGS.task_selection
 
-if FLAGS.seed is not None:
-    v["seed"] = FLAGS.seed
-if FLAGS.cuda is not None:
-    v["cuda"] = FLAGS.cuda
-if FLAGS.oracle:
-    v["env"]["oracle"] = True
-if FLAGS.task_file is not None:
-    v["env"]["task_file"] = FLAGS.task_file
+    if (
+        FLAGS.num_updates_per_iter_float is not None
+        and FLAGS.num_updates_per_iter_int is not None
+    ):
+        raise ValueError(
+            "Cannot set both num_updates_per_iter_float and num_updates_per_iter_int"
+        )
+    elif FLAGS.num_updates_per_iter_float is not None:
+        v["train"]["num_updates_per_iter"] = FLAGS.num_updates_per_iter_float
+    elif FLAGS.num_updates_per_iter_int is not None:
+        v["train"]["num_updates_per_iter"] = FLAGS.num_updates_per_iter_int
 
-# system: device, threads, seed, pid
-seed = v["seed"]
-system.reproduce(seed)
+    seq_model, algo = v["policy"]["seq_model"], v["policy"]["algo_name"]
+    assert seq_model in ["mlp", "lstm", "gru", "lstm-mlp", "gru-mlp"]
+    assert algo in ["td3", "sac", "sacd"]
 
-torch.set_num_threads(1)
-np.set_printoptions(precision=3, suppress=True)
-torch.set_printoptions(precision=3, sci_mode=False)
+    if FLAGS.automatic_entropy_tuning is not None:
+        v["policy"][algo]["automatic_entropy_tuning"] = FLAGS.automatic_entropy_tuning
+    if FLAGS.entropy_alpha is not None:
+        v["policy"][algo]["entropy_alpha"] = FLAGS.entropy_alpha
+    if FLAGS.target_entropy is not None:
+        v["policy"][algo]["target_entropy"] = FLAGS.target_entropy
+    if FLAGS.gamma is not None:
+        v["policy"]["gamma"] = FLAGS.gamma
+    if FLAGS.embedding_obs_init is not None:
+        v["policy"]["embedding_obs_init"] = FLAGS.embedding_obs_init
+    if FLAGS.embedding_rnn_init is not None:
+        v["policy"]["embedding_rnn_init"] = FLAGS.embedding_rnn_init
 
-pid = str(os.getpid())
-if "SLURM_JOB_ID" in os.environ:
-    pid += "_" + str(os.environ["SLURM_JOB_ID"])  # use job id
+    if FLAGS.seed is not None:
+        v["seed"] = FLAGS.seed
+    if FLAGS.cuda is not None:
+        v["cuda"] = FLAGS.cuda
+    if FLAGS.oracle:
+        v["env"]["oracle"] = True
+    if FLAGS.task_file is not None:
+        v["env"]["task_file"] = FLAGS.task_file
 
-# set gpu
-set_gpu_mode(torch.cuda.is_available() and v["cuda"] >= 0, v["cuda"])
+    if FLAGS.num_cpus is not None:
+        v["num_cpus"] = FLAGS.num_cpus
+    v["debug"] = FLAGS.debug
 
-# logs
-if FLAGS.debug:
-    exp_id = "debug/"
-else:
-    exp_id = "logs/"
+    return v
 
-env_type = v["env"]["env_type"]
-if len(v["env"]["env_name"].split("-")) == 3:
-    # pomdp env: name-{F/P/V}-v0
-    env_name, pomdp_type, _ = v["env"]["env_name"].split("-")
-    env_name = env_name + "/" + pomdp_type
-else:
-    env_name = v["env"]["env_name"]
-exp_id += f"{env_type}/{env_name}/"
 
-if "oracle" in v["env"] and v["env"]["oracle"] == True:
-    oracle = True
-else:
-    oracle = False
+def local_runner_main(v: dict):
+    from policies.runner_main import runner_main
 
-if seq_model == "mlp":
-    if oracle:
-        algo_name = f"oracle_{algo}"
+    runner_main(v)
+
+
+def main():
+    define_flags()
+    v = load_config()
+
+    num_cpus = v["num_cpus"] if "num_cpus" in v else os.cpu_count()
+    if num_cpus is None:
+        raise ValueError("Could not detect the number of cpus")
+    print("Using", num_cpus, "CPUs")
+    runner_config = [v] * num_cpus
+    for index, seed in enumerate(range(num_cpus)):
+        new_v = deepcopy(v)
+        new_v["seed"] = v["seed"] + index
+        new_v["t0"] = t0
+        runner_config[index] = new_v
+
+    if num_cpus > 1:
+        with Pool(num_cpus) as p:
+            p.map(local_runner_main, runner_config)
     else:
-        algo_name = f"Markovian_{algo}"
-    # exp_id += algo_name
-else:  # rnn
-    if oracle:
-        exp_id += "oracle_"
-    if "rnn_num_layers" in v["policy"]:
-        rnn_num_layers = v["policy"]["rnn_num_layers"]
-        if rnn_num_layers == 1:
-            rnn_num_layers = ""
-        else:
-            rnn_num_layers = str(rnn_num_layers)
-    else:
-        rnn_num_layers = ""
-    # exp_id += f"{algo}_{rnn_num_layers}{seq_model}"
-    if "separate" in v["policy"] and v["policy"]["separate"] == False:
-        exp_id += "_shared"
-exp_id += f"obs-{v['policy']['embedding_obs_init']}/"
-exp_id += f"rnn-{v['policy']['embedding_rnn_init']}/"
+        local_runner_main(runner_config[0])
 
-# if algo in ["sac", "sacd"]:
-#     if not v["policy"][algo]["automatic_entropy_tuning"]:
-#         exp_id += f"alpha-{v['policy'][algo]['entropy_alpha']}/"
-#     elif "target_entropy" in v["policy"]:
-#         exp_id += f"ent-{v['policy'][algo]['target_entropy']}/"
 
-exp_id += f"gamma-{v['policy']['gamma']}/"
-
-if seq_model != "mlp":
-    # exp_id += f"len-{v['train']['sampled_seq_len']}/"
-    exp_id += f"bs-{v['train']['batch_size']}/"
-
-    # exp_id += f"baseline-{v['train']['sample_weight_baseline']}/"
-    exp_id += f"freq-{v['train']['num_updates_per_iter']}/"
-    # assert v["policy"]["observ_embedding_size"] > 0
-    policy_input_str = "o"
-    if v["policy"]["action_embedding_size"] > 0:
-        policy_input_str += "a"
-    if v["policy"]["reward_embedding_size"] > 0:
-        policy_input_str += "r"
-    exp_id += policy_input_str + "/"
-
-exp_id += f"seed-{seed}/"
-os.makedirs(exp_id, exist_ok=True)
-time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")[:-2]
-log_folder = os.path.join(exp_id, time_str)
-logger_formats = ["stdout", "log", "csv"]
-if v["eval"]["log_tensorboard"]:
-    logger_formats.append("tensorboard")
-logger.configure(dir=log_folder, format_strs=logger_formats, precision=4)
-logger.log(f"preload cost {time.time() - t0:.2f}s")
-
-os.system(f"cp -r policies/ {log_folder}")
-yaml.dump(v, Path(f"{log_folder}/variant_{pid}.yml"))
-key_flags = FLAGS.get_key_flags_for_module(sys.argv[0])
-logger.log("\n".join(f.serialize() for f in key_flags) + "\n")
-logger.log("pid", pid, socket.gethostname())
-os.makedirs(os.path.join(logger.get_dir(), "save"))
-
-# start training
-learner = LEARNER_CLASS[v["env"]["env_type"]](
-    env_args=v["env"],
-    train_args=v["train"],
-    eval_args=v["eval"],
-    policy_args=v["policy"],
-    seed=seed,
-)
-
-logger.log(
-    f"total RAM usage: {psutil.Process().memory_info().rss / 1024 ** 3 :.2f} GB\n"
-)
-
-learner.train()
+if __name__ == "__main__":
+    main()

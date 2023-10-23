@@ -146,6 +146,10 @@ class JSONOutputFormat(KVWriter):
 class CSVOutputFormat(KVWriter):
     def __init__(self, filename):
         self.filename = filename
+
+        # Create the file
+        with open(self.filename, "wt") as file:
+            pass
         self.keys = []
         self.sep = ","
 
@@ -156,7 +160,7 @@ class CSVOutputFormat(KVWriter):
             if extra_keys:
                 self.keys.extend(extra_keys)
                 file.seek(0)
-                lines = self.file.readlines()
+                lines = file.readlines()
                 file.seek(0)
                 file.write(",".join(self.keys) + "\n")
                 for line in lines[1:]:
@@ -165,12 +169,13 @@ class CSVOutputFormat(KVWriter):
                     file.write("\n")
 
             file.seek(0, os.SEEK_END)
-            file.write(
-                ",".join(
-                    map(str, [kvs[k] for k in self.keys if kvs.get(k) is not None])
-                )
-                + "\n"
-            )
+            for i, k in enumerate(self.keys):
+                if i > 0:
+                    file.write(",")
+                v = kvs.get(k)
+                if v is not None:
+                    file.write(str(v))
+            file.write("\n")
 
 
 class TensorBoardOutputFormat(KVWriter):

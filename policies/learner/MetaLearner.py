@@ -51,8 +51,9 @@ class MetaLearner(Learner):
                 and len(all_tasks_indices) >= num_train_tasks + num_eval_tasks
             )
             self.num_eval_tasks = None
+            rng = np.random.default_rng(self.seed)
 
-            shuffled_tasks = np.random.permutation(all_tasks_indices)
+            shuffled_tasks = rng.permutation(all_tasks_indices)
             if task_selection == "random":
                 assert train_test_split_present ^ eval_tasks_present
                 if train_test_split_present:
@@ -72,19 +73,36 @@ class MetaLearner(Learner):
                     self.num_eval_tasks = num_eval_tasks
             elif task_selection == "random-word":
                 assert train_test_split_present
-                task_key = "word" if task_selection == "random-word" else "task_type"
 
                 # Find which tasks belong to the same word
-                tasks_by_class = np.array(get_tasks_by_type(self.train_env, task_key))
-                shuffled_words = np.random.permutation(list(range(len(tasks_by_class))))
+                tasks_by_class = np.array(get_tasks_by_type(self.train_env, "word"))
+                shuffled_words = rng.permutation(list(range(len(tasks_by_class))))
 
                 # Select which words to include in test and train
-                num_train_words = int(train_test_split * len(tasks_by_class))
+                num_train_words = int(train_test_split * tasks_by_class.shape[0])
                 train_words = shuffled_words[:num_train_words]
                 eval_words = shuffled_words[num_train_words:]
 
                 self.train_tasks = tasks_by_class[train_words].reshape(-1)
                 self.eval_tasks = tasks_by_class[eval_words].reshape(-1)
+            elif task_selection == "random-within-word":
+                # Add 80% of tasks that belong to the same word to train and 20% to eval
+                assert train_test_split_present
+
+                tasks_by_class = np.array(
+                    get_tasks_by_type(self.train_env, "word")
+                )  # (num_words, num_tasks_per_word)
+                rng.shuffle(
+                    tasks_by_class.transpose()
+                )  # (num_tasks_per_word, num_words)
+
+                # Select which words to include in test and train
+                num_train_sentences = int(train_test_split * tasks_by_class.shape[1])
+
+                # Select how many sentences to include in test and train
+                self.train_tasks = tasks_by_class[:, num_train_sentences].reshape(-1)
+                self.eval_tasks = tasks_by_class[:, num_train_sentences:].reshape(-1)
+
         else:
             # NOTE: This is on-policy varibad's setting, i.e. unlimited training tasks
             assert num_tasks is num_train_tasks is None

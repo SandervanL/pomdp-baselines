@@ -21,6 +21,7 @@ class MazeTask:
     task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
     word: str
     sentence: str
+    object_type: str
 
     # Directions of the map hallways
     short_direction: int
@@ -63,21 +64,24 @@ def task_hash(task: dict) -> int:
     )
 
 
-def create_word_embedding(
-    tasks: list[dict], embedder: Callable[[str], Tensor]
-) -> list[MazeTask]:
-    unique_words = {task_hash(task): task for task in tasks}
-    tasks = []
-    for task in unique_words.values():
-        new_task = task.copy()
-        new_task["sentence"] = task["word"]
-        maze_task = MazeTask(
-            embedding=embedder(task["word"].strip().lower()), **new_task
-        )
-        if maze_task.embedding is not None:
-            tasks.append(maze_task)
+def create_word_embedding(attribute: str):
+    def embedding_creator(
+        tasks: list[dict], embedder: Callable[[str], Tensor]
+    ) -> list[MazeTask]:
+        unique_words = {task_hash(task): task for task in tasks}
+        tasks = []
+        for task in unique_words.values():
+            new_task = task.copy()
+            new_task["sentence"] = task[attribute]
+            maze_task = MazeTask(
+                embedding=embedder(task[attribute].strip().lower()), **new_task
+            )
+            if maze_task.embedding is not None:
+                tasks.append(maze_task)
 
-    return tasks
+        return tasks
+
+    return embedding_creator
 
 
 simcse_model = None
@@ -133,26 +137,35 @@ def get_word2vec_embedding(sentence: str) -> Optional[Tensor]:
 
 
 def main(
-    folder: str, input_file: str, use_word2vec: bool = False, sentences: bool = True
+    folder: str,
+    input_file: str,
+    use_word2vec: bool = False,
+    type_name: Literal["sentences", "words", "object_type"] = "sentences",
 ):
     with open(os.path.join(folder, input_file), "r") as file:
         inputs: list[dict] = json.load(file)
 
     embedder = get_word2vec_embedding if use_word2vec else get_simcse_embedding
-    creator = create_sentence_embedding if sentences else create_word_embedding
-
+    creators = {
+        "sentences": create_sentence_embedding,
+        "words": create_word_embedding("word"),
+        "object_type": create_word_embedding("object_type"),
+    }
+    creator = creators[type_name]
     tasks = creator(inputs, embedder)
 
-    output_file = f"{'sentences' if sentences else 'words'}_{'word2vec' if use_word2vec else 'simcse'}.dill"
+    output_file = f"{type_name}_{'word2vec' if use_word2vec else 'simcse'}.dill"
     print(f"Saving to {output_file}")
     with open(os.path.join(folder, output_file), "wb") as file:
         dill.dump(tasks, file)
 
 
 if __name__ == "__main__":
-    folders = ["embeddings/two_directions/", "embeddings/one_direction/"]
+    folders = ["embeddings/one_direction/"]
     input_file = "sentences.json"
     for folder in folders:
         for use_word2vec in [True, False]:
-            for sentences in [True, False]:
+            # for sentences in ["words", "object_type"]:
+            for sentences in ["sentences"]:
+                # for sentences in ["sentences", "words", "object_type"]:
                 main(folder, input_file, use_word2vec, sentences)
