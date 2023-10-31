@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Define the list of seeds until 72
+# Define the list of seeds until 89
 seeds=(42 58 74)
 
 # Define the list of gammas

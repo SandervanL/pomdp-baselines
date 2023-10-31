@@ -161,11 +161,9 @@ def main(
 
 
 if __name__ == "__main__":
-    folders = ["embeddings/one_direction/"]
+    folders = ["embeddings/two_directions/"]
     input_file = "sentences.json"
     for folder in folders:
         for use_word2vec in [True, False]:
-            # for sentences in ["words", "object_type"]:
-            for sentences in ["sentences"]:
-                # for sentences in ["sentences", "words", "object_type"]:
+            for sentences in ["sentences", "words", "object_type"]:
                 main(folder, input_file, use_word2vec, sentences)

@@ -36,7 +36,7 @@ echo "project path: ${project_path}"
 echo "Task file $3, Seed $2"
 
 # Call your script
-srun python $project_path/main.py --cfg $project_path/configs/meta/maze/dilution.yml --seed $2 --task_file $project_path/embeddings/embeddings/one_direction/$3 --render_mode null --num_cpus=16
+srun python $project_path/main.py --cfg $project_path/configs/meta/maze/dilution.yml --seed $2 --task_file /scratch/sajvanleeuwen/embeddings/one_direction/$3 --render_mode null --num_cpus=16
 
 # the other part of view GPU resource utilization:
 #/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"

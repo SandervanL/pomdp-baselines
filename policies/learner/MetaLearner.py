@@ -130,11 +130,9 @@ class MetaLearner(Learner):
             eval_tasks = np.concatenate(
                 [
                     np.random.choice(
-                        task_list[0], replace=False, size=self.num_eval_tasks // 2
-                    ),
-                    np.random.choice(
-                        task_list[1], replace=False, size=self.num_eval_tasks // 2
-                    ),
+                        task, size=self.num_eval_tasks // len(task_list), replace=False
+                    )
+                    for task in task_list
                 ]
             )
 

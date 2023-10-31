@@ -1,4 +1,5 @@
 import math
+import multiprocessing
 
 import pandas as pd
 from pandas.errors import ParserError
@@ -14,14 +15,17 @@ def find_csv_and_yaml_pairs(root_dir):
     for dirpath, dirnames, filenames in os.walk(root_dir):
         csv_file = None
         yaml_file = None
+        csv_filled = None
 
         for filename in filenames:
             if filename.endswith("progress.csv"):
                 csv_file = os.path.join(dirpath, filename)
             elif filename.endswith(".yml") or filename.endswith(".yaml"):
                 yaml_file = os.path.join(dirpath, filename)
+            elif filename.endswith("progress-filled.csv"):
+                csv_filled = os.path.join(dirpath, filename)
 
-        if csv_file and yaml_file:
+        if csv_file and yaml_file and csv_filled is None:
             yield csv_file, yaml_file
 
 
@@ -30,21 +34,23 @@ groups = {
     "sentences_simcse.dill": "Sentences SimCSE",
     "words_word2vec.dill": "Words Word2Vec",
     "words_simcse.dill": "Words SimCSE",
+    "object_type_word2vec.dill": "Type Word2Vec",
+    "object_type_simcse.dill": "Type SimCSE",
 }
 
 groups_info = {
     "sentences_simcse.dill": "Sentences",
     "words_simcse.dill": "Words",
+    "object_type_simcse.dill": "Object Type",
     "perfect.dill": "Perfect",
 }
 
-# sentences_simcse.dill-44 2727340
-# sentences_word2vec.dill-45 2727342
-# sentences_simcse.dill-45 2727344
-# sentences_word2vec.dill-46 2727346
-# words_word2vec.dill-46 2727347
-# words_simcse.dill-46 2727349
-# Everything above 47 failed immediately (except sentences_word2vec.dill-47)
+
+def get_group(groups: dict[str, str], filename: str) -> str:
+    for key, value in groups.items():
+        if key in filename:
+            return value
+    raise f"Could not find group for {filename}"
 
 
 def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> bool:
@@ -53,29 +59,23 @@ def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> bool:
         config = yaml.load(file)
 
     # For generalization
-    # selection = config["env"]["task_selection"]
-    # if selection == "random":
-    #     group = "Global"
-    # elif selection == "random-word":
-    #     group = "80% Within Words"
-    # else:
-    #     raise f"Unknown task selection {selection}"
+    selection = config["env"]["task_selection"]
+    percentage = int(round(100 * (1 - config["env"]["train_test_split"])))
+    if selection == "random":
+        group_name = "Global"
+    elif selection == "random-word":
+        group_name = "Words"
+    elif selection == "random-within-word":
+        group_name = "Within Words"
+    else:
+        raise f"Unknown task selection {selection}"
+    group = f"{percentage}% {group_name}"
 
     # For info dilution
-    # task_file = config["env"]["task_file"]
-    # task_name = None
-    # for key in groups_info.keys():
-    #     if key in task_file:
-    #         task_name = key
-    #         break
-    # if task_name is None:
-    #     raise f"Could not find group for {task_file}"
-    # group = groups_info[task_name]
+    # group = get_group(groups_info, config["env"]["task_file"])
 
     # For embedding type tasks
-    # if config["env"]["task_file"] not in groups:
-    #     raise f"Could not find group for {config['env']['task_file']}"
-    # group = groups[config["env"]["task_file"]]
+    # group = get_group(groups, config["env"]["task_file"])
 
     config["old"] = is_old
     config["file"] = yaml_path
@@ -84,6 +84,7 @@ def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> bool:
 
 
 def insert_wandb(csv_file: str) -> None:
+    print(csv_file)
     try:
         df = pd.read_csv(csv_file)
     except ParserError:
@@ -122,7 +123,7 @@ def insert_wandb(csv_file: str) -> None:
                     result_table = pd.concat(
                         [result_table, pd.DataFrame([old_data])], ignore_index=True
                     )
-                wandb.log(old_data)
+                # wandb.log(old_data)
                 previous_env_steps = time + 10
 
         # Calculate the new values
@@ -143,21 +144,28 @@ def insert_wandb(csv_file: str) -> None:
 
 
 def main():
-    group = ""
-    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-consumption\\embedding-fifty-logs"
-    project = "Embedding Consumption 2"
+    group = "Baseline"
+    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\directions\\directions-log"
+
+    project = "Generalization 5"
     is_old = False
 
-    for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
-        print(f"CSV File: {csv_file}")
-        print(f"YAML File: {yaml_file}")
+    with multiprocessing.Pool(8) as pool:
+        csv_yamls = list(find_csv_and_yaml_pairs(root_directory))
+        csv_files = [csv_file for csv_file, _ in csv_yamls]
 
-        success = init_wandb(yaml_file, project, is_old, group)
-        if not success:
-            continue
-        insert_wandb(csv_file)
-        wandb.finish()
-        # You can process the CSV and YAML files here as needed
+        # Pool map to call insert_wandb
+        pool.map(insert_wandb, csv_files)
+
+    # for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
+    #     print(f"CSV File: {csv_file}")
+    #     print(f"YAML File: {yaml_file}")
+    #
+    #     success = init_wandb(yaml_file, project, is_old, group)
+    #     if not success:
+    #         continue
+    #     insert_wandb(csv_file)
+    #     wandb.finish()
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def generate_prompt(word: str, num_sentences: int):
-    return f"Create {num_sentences} sentences that tell someone else there is a {word} to his/her right"
+    return f"Create {num_sentences} sentences that tell someone else there is a {word} to his/her left"
 
 
 def get_sentence(word: str) -> list[str]:

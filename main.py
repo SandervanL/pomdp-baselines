@@ -47,6 +47,7 @@ def define_flags():
         "num_updates_per_iter_int", None, "How many updates per iteration."
     )
     flags.DEFINE_integer("num_cpus", None, "How many cpus to use.")
+    flags.DEFINE_float("uncertainty_scale", None, "The scale of the uncertainty.")
 
     flags.FLAGS(sys.argv)
 
@@ -97,6 +98,8 @@ def load_config() -> dict:
         v["policy"]["embedding_obs_init"] = FLAGS.embedding_obs_init
     if FLAGS.embedding_rnn_init is not None:
         v["policy"]["embedding_rnn_init"] = FLAGS.embedding_rnn_init
+    if FLAGS.uncertainty_scale is not None:
+        v["policy"]["uncertainty"]["scale"] = FLAGS.uncertainty_scale
 
     if FLAGS.seed is not None:
         v["seed"] = FLAGS.seed

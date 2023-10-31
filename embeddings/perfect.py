@@ -85,6 +85,36 @@ def two_directions_file():
         dill.dump(tasks, file)
 
 
+def hook_left():
+    blocked = MazeTask(
+        embedding=Tensor([1.0]),
+        blocked=True,
+        task_type=0,
+        word="blocked",
+        sentence="blocked",
+        short_direction=2,
+        short_hook_direction=2,
+        long_direction=1,
+        long_hook_direction=2,
+        object_type="light",
+    )
+    unblocked = MazeTask(
+        embedding=Tensor([0.0]),
+        blocked=False,
+        task_type=1,
+        word="unblocked",
+        sentence="unblocked",
+        short_direction=2,
+        short_hook_direction=2,
+        long_direction=1,
+        long_hook_direction=2,
+        object_type="light",
+    )
+    tasks = [blocked, unblocked]
+    with open("embeddings/one_direction/perfect_hooks.dill", "wb") as file:
+        dill.dump(tasks, file)
+
+
 def all_directions():
     word = 0
     tasks = []
@@ -127,6 +157,4 @@ def all_directions():
 
 
 if __name__ == "__main__":
-    one_direction_file()
-    two_directions_file()
-    all_directions()
+    hook_left()
