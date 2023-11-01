@@ -15,7 +15,7 @@ env:
 train:
   # 1000*100 = 10k steps
   num_iters: 600 # number meta-training iterates
-  num_init_rollouts_pool: 0 # before training
+  num_init_rollouts_pool: 64 # before training
   num_rollouts_per_iter: 1
 
   num_updates_per_iter: 0.05

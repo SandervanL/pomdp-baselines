@@ -61,7 +61,10 @@ class SeqReplayBuffer:
         self._tasks = (
             None
             if task_dim is None
-            else (np.zeros((max_replay_buffer_size, task_dim), dtype=np.float32))
+            else np.zeros(
+                (int(max_replay_buffer_size / sampled_seq_len), task_dim),
+                dtype=np.float32,
+            )
         )
         self._orig_states = (
             None
@@ -75,6 +78,7 @@ class SeqReplayBuffer:
         self._sample_weight_baseline = sample_weight_baseline
 
         self.clear()
+        self._tasks_index = 0
 
         RAM = 0.0
         for name, var in vars(self).items():
@@ -88,6 +92,7 @@ class SeqReplayBuffer:
     def clear(self):
         self._top = 0  # trajectory level (first dim in 3D buffer)
         self._size = 0  # trajectory level (first dim in 3D buffer)
+        self._tasks_index = 0
 
     def add_episode(
         self,
@@ -96,7 +101,7 @@ class SeqReplayBuffer:
         rewards: np.ndarray,
         terminals: np.ndarray,
         next_observations: np.ndarray,
-        tasks: Optional[np.ndarray] = None,
+        task: Optional[np.ndarray] = None,
         orig_states: Optional[np.ndarray] = None,
     ) -> None:
         """
@@ -113,7 +118,6 @@ class SeqReplayBuffer:
             == rewards.shape[0]
             == terminals.shape[0]
             == next_observations.shape[0]
-            == (terminals.shape[0] if tasks is None else tasks.shape[0])
             == (terminals.shape[0] if orig_states is None else orig_states.shape[0])
             >= 2
         )
@@ -129,8 +133,9 @@ class SeqReplayBuffer:
         self._terminals[indices] = terminals
         self._next_observations[indices] = next_observations
 
-        if tasks is not None and self._tasks is not None:
-            self._tasks[indices] = tasks
+        if task is not None and self._tasks is not None:
+            self._tasks[self._tasks_index] = task
+            self._tasks_index = (self._tasks_index + 1) % self._tasks.shape[0]
         if orig_states is not None and self._orig_states is not None:
             self._orig_states[indices] = orig_states
 
@@ -170,8 +175,8 @@ class SeqReplayBuffer:
             indices += list(np.arange(start, end) % self._max_replay_buffer_size)
 
         # extract data
-        batch = self._sample_data(indices)
-        # each item has 2D shape (num_episodes * sampled_seq_len, dim)
+        batch = self._sample_data(indices, sampled_episode_starts)
+        # each item has 2D shape (num_episodes * sampled_seq_len, dim) except task
 
         # generate masks (B, T)
         masks = self._generate_masks(indices, batch_size)
@@ -197,7 +202,7 @@ class SeqReplayBuffer:
 
         return np.random.choice(valid_starts_indices, size=batch_size, p=sample_weights)
 
-    def _sample_data(self, indices):
+    def _sample_data(self, indices: list[int], episode_starts: np.ndarray):
         result = dict(
             obs=self._observations[indices],
             act=self._actions[indices],
@@ -206,7 +211,17 @@ class SeqReplayBuffer:
             obs2=self._next_observations[indices],
         )
         if self._tasks is not None:
-            result["task"] = self._tasks[indices]
+            task_indices = (
+                episode_starts // self._sampled_seq_len
+            ) % self._tasks.shape[0]
+
+            # Repeat the embedding for each timestep in the sequence
+            result["task"] = np.repeat(
+                self._tasks[task_indices][:, np.newaxis, :],
+                self._sampled_seq_len,
+                1,
+            ).reshape(-1, 1024)
+
         if self._orig_states is not None:
             result["orig_state"] = self._orig_states[indices]
         return result

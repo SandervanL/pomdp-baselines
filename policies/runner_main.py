@@ -103,8 +103,7 @@ def build_folder_name(v: dict):
     # exp_id += policy_input_str + "/"
 
     if "task_file" in v["env"]:
-        file_part = v["env"]["task_file"].split("/")[-1]
-        file_part = file_part.split(".")[0]
+        file_part = os.path.basename(v["env"]["task_file"]).split(".")[0]
         exp_id += f"task-{file_part}/"
     if "task_selection" in v["env"]:
         exp_id += f"selection-{v['env']['task_selection']}/"

@@ -174,7 +174,7 @@ class BaseRnn(Module, metaclass=abc.ABCMeta):
         :param batch_size: the batch size of the upcoming operation.
         :param task: (1, B, internal_state_dim)
         """
-        # here we assume batch_size = 1
+
         if task is not None and task.dim() == 3 and task.shape[0] != 1:
             task = task[0, :, :].unsqueeze(dim=0)
 

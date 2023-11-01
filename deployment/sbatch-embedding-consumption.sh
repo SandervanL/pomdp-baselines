@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=48     # usually recommended in powers of 2 or divisible by 2
 #SBATCH --partition=compute	  # possible partitions are: <compute gpu memory> The standard is compute, memory is for high memory requirements.
 ##SBATCH --mem-per-gpu=20GB	  # only if requesting gpus, also mutually exclusive with --mem and --mem-per-cpu
-#SBATCH --mem=128G	          # how much RAM is your job going to require
+#SBATCH --mem-per-cpu=3G	          # how much RAM is your job going to require
 #SBATCH --account=Education-EEMCS-MSc-CS	# can comment out and than uses the default innovation account that all scientific stuff have access to.
 
 # Setup modules

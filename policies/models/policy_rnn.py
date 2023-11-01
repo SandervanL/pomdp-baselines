@@ -9,6 +9,7 @@ https://github.com/lmzintgraf/varibad/blob/master/models/encoder.py
 from typing import Optional
 
 import numpy as np
+import psutil
 import torch
 from copy import deepcopy
 import torch.nn as nn
@@ -18,7 +19,7 @@ from torch.optim import Adam
 
 from policies.rl.base import RLAlgorithmBase
 from uncertainty import UNCERTAINTY_CLASSES, Uncertainty
-from utils import helpers as utl
+from utils import helpers as utl, logger
 from policies.rl import RL_ALGORITHMS
 import torchkit.pytorch_utils as ptu
 from policies.models.recurrent_critic import CriticRnn
@@ -46,7 +47,7 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         tau: float = 5e-3,
         # pixel obs
         image_encoder_fn=lambda: None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
 
@@ -162,6 +163,10 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
             == masks.shape[0] + 1
         )
         num_valid = torch.clamp(masks.sum(), min=1.0)  # as denominator of loss
+
+        logger.log(
+            f"total RAM usage: {psutil.Process().memory_info().rss / 1024 ** 3 :.2f} GB\n"
+        )
 
         ### 1. Critic loss
         (q1_pred, q2_pred), q_target = self.algo.critic_loss(

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of seeds
-seeds=(42 58 74)
+seeds=(42)
 
 # Define the list of gammas
 gammas=(0.9 0.91 0.92 0.93 0.94 0.95 0.96 0.97 0.98 0.99)

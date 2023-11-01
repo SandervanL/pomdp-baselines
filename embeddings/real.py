@@ -87,6 +87,16 @@ def create_word_embedding(attribute: str):
 simcse_model = None
 
 
+def multiple_simcse_embeddings(sentences: list[str], model: str) -> Tensor:
+    global simcse_model
+    from simcse import SimCSE
+
+    if simcse_model is None:
+        simcse_model = SimCSE(model)
+
+    return simcse_model.encode(sentences)
+
+
 def get_simcse_embedding(sentence: str) -> Tensor:
     global simcse_model
     from simcse import SimCSE

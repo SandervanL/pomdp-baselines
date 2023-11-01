@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of seeds until 72
-seeds=(42 58 74)
+seeds=(42)
 
 # Define the list of gammas
 task_files=("left_longhook.dill" "leftright_longhook.dill" "left_longstraight.dill" "leftright_longstraight.dill" "left_allstraight.dill" "leftright_allstraight.dill")

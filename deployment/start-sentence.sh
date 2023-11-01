@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of seeds until 89
-seeds=(42 58 74)
+seeds=(42)
 
 # Define the list of gammas
 task_selections=("random" "random-word" "random-within-word")

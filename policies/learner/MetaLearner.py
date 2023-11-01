@@ -22,7 +22,7 @@ class MetaLearner(Learner):
         num_train_tasks: Optional[int] = None,
         num_eval_tasks: Optional[int] = None,
         eval_on_train_tasks: bool = False,
-        **kwargs
+        **kwargs,
     ):
         # initialize environment
         assert env_type == "meta"
@@ -102,6 +102,8 @@ class MetaLearner(Learner):
                 # Select how many sentences to include in test and train
                 self.train_tasks = tasks_by_class[:, num_train_sentences].reshape(-1)
                 self.eval_tasks = tasks_by_class[:, num_train_sentences:].reshape(-1)
+            else:
+                raise ValueError(f"Unknown task selection '{task_selection}'")
 
         else:
             # NOTE: This is on-policy varibad's setting, i.e. unlimited training tasks

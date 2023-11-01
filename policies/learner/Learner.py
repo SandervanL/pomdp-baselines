@@ -278,8 +278,7 @@ class Learner:
                 < self.num_init_rollouts_pool * self.max_trajectory_len
             ):
                 self.collect_rollouts(
-                    num_rollouts=1,
-                    random_actions=True,
+                    num_rollouts=1, random_actions=True, observe_uncertainty=False
                 )
             logger.log(
                 "Done! env steps",
@@ -331,7 +330,9 @@ class Learner:
         self.save_model(current_num_iters, perf)
 
     @torch.no_grad()
-    def collect_rollouts(self, num_rollouts: int, random_actions=False) -> int:
+    def collect_rollouts(
+        self, num_rollouts: int, random_actions=False, observe_uncertainty=True
+    ) -> int:
         """collect num_rollouts of trajectories in task and save into policy buffer
         :param random_actions: whether to use policy to sample actions, or randomly sample action space
         """
@@ -376,7 +377,6 @@ class Learner:
                     [],
                     [],
                 )
-                task_list = []
                 orig_state_list = []
 
             while not done_rollout:
@@ -459,8 +459,6 @@ class Learner:
                     term_list.append(term)  # bool
                     next_obs_list.append(next_obs)  # (1, dim)
 
-                    if task_embedding is not None:
-                        task_list.append(task_embedding)
                     if "agent_position" in info:
                         orig_state_list.append(info["agent_position"])
 
@@ -475,16 +473,16 @@ class Learner:
                         act_buffer, dim=-1, keepdims=True
                     )  # (L, 1)
 
-                tasks = (
-                    None
-                    if len(task_list) == 0
-                    else ptu.get_numpy(torch.cat(task_list, dim=0))
+                task_embedding = (
+                    None if task_embedding is None else ptu.get_numpy(task_embedding)
                 )
                 orig_states = None
                 if len(orig_state_list) > 0:
                     orig_states_tensor = torch.cat(orig_state_list, dim=0)
-                    self.agent.uncertainty.observe(orig_states_tensor)
                     orig_states = ptu.get_numpy(orig_states_tensor)
+
+                    if observe_uncertainty:
+                        self.agent.uncertainty.observe(orig_states_tensor)
 
                 self.policy_storage.add_episode(
                     observations=ptu.get_numpy(torch.cat(obs_list, dim=0)),  # (L, dim)
@@ -494,7 +492,7 @@ class Learner:
                     next_observations=ptu.get_numpy(
                         torch.cat(next_obs_list, dim=0)
                     ),  # (L, dim),
-                    tasks=tasks,  # (L, dim),
+                    task=task_embedding,  # (L, dim),
                     orig_states=orig_states,
                 )
                 # print(

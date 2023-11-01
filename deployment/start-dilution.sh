@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of seeds
-seeds=(42 58 74)
+seeds=(42)
 
 # Define the list of task files
 task_files=("object_type_simcse.dill" "object_type_word2vec.dill" "sentences_simcse.dill" "sentences_word2vec.dill" "words_simcse.dill" "words_word2vec.dill")

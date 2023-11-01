@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the list of seeds until 89
-seeds=(42 58 74)
+seeds=(42)
 
 # Define the list of gammas
 uncertainties=("0.01" "0.2" "0.5" "1" "2" "5" "10" "20" "50" "100")
