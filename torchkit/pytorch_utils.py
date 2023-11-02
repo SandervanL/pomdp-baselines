@@ -173,6 +173,18 @@ def empty_tensor_like(tensor: Tensor) -> Tensor:
     return empty(shape)
 
 
+def arange(*args, **kwargs) -> Tensor:
+    return torch.arange(*args, **kwargs).to(device)
+
+
+def randint(*args, **kwargs) -> Tensor:
+    return torch.randint(*args, **kwargs).to(device)
+
+
+def randperm(*args, **kwargs) -> Tensor:
+    return torch.randperm(*args, **kwargs).to(device)
+
+
 def to_device(tensor: Tensor) -> Tensor:
     return tensor.to(device)
 

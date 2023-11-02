@@ -1,5 +1,6 @@
 import json
 import re
+import time
 
 import openai
 from dotenv import load_dotenv
@@ -12,13 +13,18 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
+def generate_direction_prompt(
+    word: str, num_sentences: int, direction: str, negation: bool
+):
+    negation_str = "not" if negation else ""
+    return f"Create {num_sentences} sentences that tell someone else there is {negation_str} a {word} placed {direction}"
+
+
 def generate_prompt(word: str, num_sentences: int):
     return f"Create {num_sentences} sentences that tell someone else there is a {word} to his/her left"
 
 
-def get_sentence(word: str) -> list[str]:
-    print(word)
-    prompt = generate_prompt(word, 30)
+def get_sentence(prompt: str) -> list[str]:
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
@@ -78,7 +84,7 @@ def get_task_configs(config_type: str):
                         }
 
 
-def main(file_path: str, out_file: str, config_type: str = "all"):
+def main_one_direction(file_path: str, out_file: str, config_type: str = "all"):
     with open(file_path, "r") as file:
         words = json.load(file)
 
@@ -108,6 +114,50 @@ def main(file_path: str, out_file: str, config_type: str = "all"):
         json.dump(sentences, file)
 
 
+def main_multiple_directions(words_path: str, directions_path: str, out_file: str):
+    time.sleep(1)
+    with open(words_path, "r") as file:
+        words: list[list[str]] = json.load(file)
+
+    with open(directions_path, "r") as file:
+        directions: list[list[int]] = json.load(file)
+
+    with open("progress.csv", "w") as file:
+        file.write("word,blocked,direction,negation,sentence\n")
+
+    object_types = ["heavy", "light"]
+    sentences = []
+
+    for blocked, word_group in enumerate(words):
+        for word in word_group:
+            for direction_index, direction_group in enumerate(directions):
+                for direction in direction_group:
+                    for negation in [True, False]:
+                        prompt = generate_direction_prompt(word, 5, direction, negation)
+                        for sentence in get_sentence(prompt):
+                            filtered_sentence = filter_sentence(sentence)
+                            with open("progress.csv", "a") as file:
+                                file.write(
+                                    f'"{word}",{blocked == 0},"{direction}",{negation},"{filtered_sentence}"\n'
+                                )
+
+                            task = {
+                                "blocked": blocked == 0,
+                                "object_type": object_types[
+                                    blocked if not negation else 1 - blocked
+                                ],
+                                "sentence": filtered_sentence,
+                                "word": word,
+                                "direction": direction,
+                                "negation": negation,
+                                "task_type": blocked * 4 + direction_index,
+                            }
+                            sentences.append(task)
+
+    with open(out_file, "w") as file:
+        json.dump(sentences, file)
+
+
 def filter_sentence(sentence: str) -> str:
     return (
         re.sub(r"[0-9.]", "", sentence)
@@ -120,7 +170,11 @@ def filter_sentence(sentence: str) -> str:
 
 
 if __name__ == "__main__":
-    main(
-        "embeddings/words.json",
-        "embeddings/all_directions.json",
+    # main_one_direction(
+    #     "embeddings/words.json",
+    #     "embeddings/all_directions.json",
+    # )
+    main_multiple_directions(
+        "words.json",
+        "directions.json",
     )

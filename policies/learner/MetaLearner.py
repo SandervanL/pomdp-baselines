@@ -1,6 +1,6 @@
 from collections import defaultdict
 from functools import reduce
-from typing import Optional
+from typing import Optional, Literal
 
 import numpy as np
 from gymnasium import Env
@@ -100,8 +100,8 @@ class MetaLearner(Learner):
                 num_train_sentences = int(train_test_split * tasks_by_class.shape[1])
 
                 # Select how many sentences to include in test and train
-                self.train_tasks = tasks_by_class[:, num_train_sentences].reshape(-1)
-                self.eval_tasks = tasks_by_class[:, num_train_sentences:].reshape(-1)
+                self.train_tasks = tasks_by_class[:, num_train_sentences:].reshape(-1)
+                self.eval_tasks = tasks_by_class[:, :num_train_sentences].reshape(-1)
             else:
                 raise ValueError(f"Unknown task selection '{task_selection}'")
 
@@ -306,8 +306,13 @@ class MetaLearner(Learner):
         return eval_results
 
 
-def get_tasks_by_type(env: Env, key: str = "task_type") -> list[list[int]]:
+def get_tasks_by_type(
+    env: Env, key: str = Literal["task_type", "word", "all"]
+) -> list[list[int]]:
     tasks: list[MazeTask] = env.get_wrapper_attr("get_all_tasks")()
+    if key == "all":
+        return [list(range(len(tasks)))]
+
     tasks_by_class_dict: dict[int, list[int]] = defaultdict(lambda: [])
     for index, task in enumerate(tasks):
         tasks_by_class_dict[getattr(task, key)].append(index)

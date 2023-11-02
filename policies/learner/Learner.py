@@ -14,6 +14,7 @@ from torch import Tensor
 from torch.nn import functional as F
 import gymnasium as gym
 
+from buffers import SeqReplayBufferGPU
 from envs.meta.maze.MultitaskMaze import MazeTask
 from policies.models import AGENT_CLASSES, AGENT_ARCHS
 from torchkit.networks import ImageEncoder
@@ -208,7 +209,7 @@ class Learner:
                 sampled_seq_len = self.max_trajectory_len
 
             if buffer_type is None or buffer_type == SeqReplayBuffer.buffer_type:
-                buffer_class = SeqReplayBuffer
+                buffer_class = SeqReplayBufferGPU
             elif buffer_type == RAMEfficient_SeqReplayBuffer.buffer_type:
                 buffer_class = RAMEfficient_SeqReplayBuffer
             logger.log(buffer_class)
