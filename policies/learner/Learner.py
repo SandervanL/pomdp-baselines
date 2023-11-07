@@ -209,7 +209,7 @@ class Learner:
                 sampled_seq_len = self.max_trajectory_len
 
             if buffer_type is None or buffer_type == SeqReplayBuffer.buffer_type:
-                buffer_class = SeqReplayBufferGPU
+                buffer_class = SeqReplayBuffer
             elif buffer_type == RAMEfficient_SeqReplayBuffer.buffer_type:
                 buffer_class = RAMEfficient_SeqReplayBuffer
             logger.log(buffer_class)

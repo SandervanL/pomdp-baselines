@@ -145,7 +145,7 @@ def insert_wandb(csv_file: str) -> None:
 
 def main():
     group = "Baseline"
-    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\directions\\directions2-log"
+    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\gen-tests\\generalization-logs"
 
     project = "Generalization 5"
     is_old = False

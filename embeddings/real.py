@@ -22,6 +22,8 @@ class MazeTask:
     word: str
     sentence: str
     object_type: str
+    negation: bool
+    direction: str
 
     # Directions of the map hallways
     short_direction: int
@@ -168,6 +170,61 @@ def main(
     print(f"Saving to {output_file}")
     with open(os.path.join(folder, output_file), "wb") as file:
         dill.dump(tasks, file)
+
+
+def directions_index(directions: list[list[str]], direction: str) -> int:
+    for index, direction_list in enumerate(directions):
+        if direction in direction_list:
+            return index
+    raise f"Could not find direction {direction}"
+
+
+def main_multiple_directions(in_file: str):
+    with open(in_file, "r") as file:
+        tasks: list[dict] = json.load(file)
+
+    with open("directions.json", "r") as file:
+        directions: list[list[str]] = json.load(file)
+
+    sentences = [task["sentence"] for task in tasks]
+    embeddings: Tensor = multiple_simcse_embeddings(
+        sentences, "princeton-nlp/sup-simcse-roberta-large"
+    )
+
+    all_directions = []
+    for task, embedding in zip(tasks, embeddings):
+        short_direction = directions_index(directions, task["direction"])
+        for long_direction in range(0, 4):
+            if long_direction == short_direction:
+                continue
+            maze_task = MazeTask(
+                embedding=embedding,
+                short_direction=short_direction,
+                short_hook_direction=short_direction,
+                long_direction=long_direction,
+                long_hook_direction=long_direction,
+                **task,
+            )
+            all_directions.append(maze_task)
+
+    with open("all_directions_negation.dill", "wb") as file:
+        dill.dump(all_directions, file)
+
+    just_directions = [task for task in all_directions if not task.negation]
+    with open("all_directions.dill", "wb") as file:
+        dill.dump(just_directions, file)
+
+    leftright_directions = [
+        task for task in just_directions if task.short_direction >= 2
+    ]
+    with open("leftright_directions.dill", "wb") as file:
+        dill.dump(leftright_directions, file)
+
+    left_directions = [
+        task for task in leftright_directions if task.long_direction == 2
+    ]
+    with open("left_directions.dill", "wb") as file:
+        dill.dump(left_directions, file)
 
 
 if __name__ == "__main__":

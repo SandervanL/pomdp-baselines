@@ -4,10 +4,10 @@ from copy import deepcopy
 import dill
 
 from embeddings.load_sentences import anti_direction
-from embeddings.real import MazeTask
+from embeddings.real import MazeTask, get_simcse_embedding
 
 
-def main(in_file: str, out_file: str):
+def main_one_sentence(in_file: str, out_file: str):
     with open(in_file, "rb") as file:
         tasks: list[MazeTask] = dill.load(file)
 
@@ -59,11 +59,11 @@ def repair_two_directions(input_file: str, output_file: str):
 
 
 if __name__ == "__main__":
-    main(
+    main_one_sentence(
         "embeddings/one_direction/sentences_simcse.dill",
         "embeddings/all_directions/left_allstraight.dill",
     )
-    main(
+    main_one_sentence(
         "embeddings/two_directions/sentences_simcse.dill",
         "embeddings/all_directions/leftright_allstraight.dill",
     )

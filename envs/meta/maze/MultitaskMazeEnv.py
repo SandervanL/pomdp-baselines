@@ -69,14 +69,14 @@ class MultitaskMazeEnv(MazeEnv):
 
     def reset_task(
         self,
-        task: Optional[int] = None,
+        task: Optional[MazeTask],
         *,
         seed: Optional[int] = None,
     ) -> None:
         """
         Resets to a new task.
         Args:
-            task: the index of the task to reset to. If None, a random task is chosen.
+            task: the task to reset to. If None, a random task is chosen.
             seed: the seed to use.
 
         Returns:
@@ -85,7 +85,7 @@ class MultitaskMazeEnv(MazeEnv):
         if task is None:
             self.task = self.get_random_task(seed=seed)
         else:
-            self.task = self.tasks[task]
+            self.task = task
         self.maze = MultitaskMaze(self.task)
         self.blocked = self.maze.blocked
 
@@ -98,7 +98,7 @@ class MultitaskMazeEnv(MazeEnv):
     def get_all_tasks(self):
         return self.tasks
 
-    def get_random_task(self, seed: Optional[int] = None):
+    def get_random_task(self, seed: Optional[int] = None) -> MazeTask:
         rng = np.random.RandomState(seed)
         return rng.choice(self.tasks)
 

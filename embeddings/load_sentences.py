@@ -1,12 +1,14 @@
 import json
 import re
 import time
+from copy import deepcopy
 
 import openai
 from dotenv import load_dotenv
 
 import os
 
+from embeddings.real import directions_index
 
 load_dotenv()
 
@@ -17,7 +19,7 @@ def generate_direction_prompt(
     word: str, num_sentences: int, direction: str, negation: bool
 ):
     negation_str = "not" if negation else ""
-    return f"Create {num_sentences} sentences that tell someone else there is {negation_str} a {word} placed {direction}"
+    return f"Give me {num_sentences} sentences that tell someone: there is {negation_str} a {word[0].lower()} placed {direction}"
 
 
 def generate_prompt(word: str, num_sentences: int):
@@ -25,13 +27,17 @@ def generate_prompt(word: str, num_sentences: int):
 
 
 def get_sentence(prompt: str) -> list[str]:
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt},
-        ],
-    )
+    for i in range(3):
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        break
+    else:
+        raise Exception("Could not get response from OpenAI")
     return [
         sentence
         for sentence in response.choices[0].message.content.split("\n")
@@ -115,47 +121,66 @@ def main_one_direction(file_path: str, out_file: str, config_type: str = "all"):
 
 
 def main_multiple_directions(words_path: str, directions_path: str, out_file: str):
-    time.sleep(1)
     with open(words_path, "r") as file:
         words: list[list[str]] = json.load(file)
 
     with open(directions_path, "r") as file:
         directions: list[list[int]] = json.load(file)
 
-    with open("progress.csv", "w") as file:
-        file.write("word,blocked,direction,negation,sentence\n")
+    with open(out_file, "r") as file:
+        sentences: list[dict] = json.load(file)
+
+    # with open("progress.csv", "w") as file:
+    #     file.write("word,blocked,direction,negation,sentence\n")
 
     object_types = ["heavy", "light"]
-    sentences = []
 
-    for blocked, word_group in enumerate(words):
-        for word in word_group:
-            for direction_index, direction_group in enumerate(directions):
-                for direction in direction_group:
-                    for negation in [True, False]:
-                        prompt = generate_direction_prompt(word, 5, direction, negation)
-                        for sentence in get_sentence(prompt):
-                            filtered_sentence = filter_sentence(sentence)
-                            with open("progress.csv", "a") as file:
-                                file.write(
-                                    f'"{word}",{blocked == 0},"{direction}",{negation},"{filtered_sentence}"\n'
-                                )
-
-                            task = {
+    try:
+        for blocked, word_group in enumerate(words):
+            for word in word_group:
+                for direction_index, direction_group in enumerate(directions):
+                    for direction in direction_group:
+                        for negation in [True, False]:
+                            prompt = generate_direction_prompt(
+                                word, 5, direction, negation
+                            )
+                            base_task = {
                                 "blocked": blocked == 0,
                                 "object_type": object_types[
                                     blocked if not negation else 1 - blocked
                                 ],
-                                "sentence": filtered_sentence,
                                 "word": word,
                                 "direction": direction,
                                 "negation": negation,
                                 "task_type": blocked * 4 + direction_index,
                             }
-                            sentences.append(task)
+                            if task_exists(sentences, base_task):
+                                continue
 
-    with open(out_file, "w") as file:
-        json.dump(sentences, file)
+                            for sentence in get_sentence(prompt):
+                                filtered_sentence = filter_sentence(sentence)
+                                print(filtered_sentence)
+                                with open("progress.csv", "a") as file:
+                                    file.write(
+                                        f'"{word}",{blocked == 0},"{direction}",{negation},"{filtered_sentence}"\n'
+                                    )
+                                task = deepcopy(base_task)
+                                task["sentence"] = sentence
+
+                                sentences.append(task)
+
+    finally:
+        with open(out_file, "w") as file:
+            json.dump(sentences, file)
+
+
+def task_exists(tasks: list[dict], task: dict) -> bool:
+    for task_ in tasks:
+        if all(
+            task_[field] == task[field] for field in task.keys() if field != "sentence"
+        ):
+            return True
+    return False
 
 
 def filter_sentence(sentence: str) -> str:
@@ -169,12 +194,31 @@ def filter_sentence(sentence: str) -> str:
     )
 
 
+def fix_sentences(file_path: str):
+    with open(file_path, "r") as file:
+        sentences: list[dict] = json.load(file)
+
+    with open("directions.json", "r") as file:
+        directions: list[list[str]] = json.load(file)
+
+    for sentence in sentences:
+        blocked = 0 if sentence["blocked"] else 1
+        sentence["task_type"] = 4 * blocked + directions_index(
+            directions, sentence["direction"]
+        )
+
+    with open(file_path, "w") as file:
+        json.dump(sentences, file)
+
+
+# if __name__ == "__main__":
+#     fix_sentences("sentences_4_directions.json")
+
 if __name__ == "__main__":
-    # main_one_direction(
-    #     "embeddings/words.json",
-    #     "embeddings/all_directions.json",
-    # )
+    #     # main_one_direction(
+    #     #     "embeddings/words.json",
+    #     #     "embeddings/all_directions.json",
+    #     # )
     main_multiple_directions(
-        "words.json",
-        "directions.json",
+        "words.json", "directions.json", "sentences_4_directions.json"
     )

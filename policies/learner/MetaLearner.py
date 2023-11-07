@@ -1,14 +1,16 @@
 from collections import defaultdict
-from functools import reduce
 from typing import Optional, Literal
 
 import numpy as np
+import torch
 from gymnasium import Env
+from torch import Tensor
 
 from envs.meta.maze.MultitaskMaze import MazeTask
 from .Learner import Learner, EvaluationResults
 from utils import logger
 from utils import evaluation as utl_eval
+from torchkit import pytorch_utils as ptu
 
 
 class MetaLearner(Learner):
@@ -37,74 +39,14 @@ class MetaLearner(Learner):
         self.eval_on_train_tasks = eval_on_train_tasks
 
         if self.train_env.get_wrapper_attr("n_tasks") is not None:
-            all_tasks_indices = self.train_env.get_wrapper_attr("get_all_task_idx")()
-            # NOTE: This is off-policy varibad's setting, i.e. limited training tasks
-            # split to train/eval tasks. If train_test_split is None, then num_train_tasks
-            # and num_eval_tasks must be specified.
-            train_test_split_present = (
-                train_test_split is not None and 0 <= train_test_split <= 1
+            tasks: list[MazeTask] = self.train_env.get_wrapper_attr("get_all_tasks")()
+            self.train_tasks, self.eval_tasks = get_train_test(
+                tasks, task_selection, train_test_split
             )
-            eval_tasks_present = (
-                num_train_tasks is not None
-                and num_eval_tasks is not None
-                and num_train_tasks >= num_eval_tasks > 0
-                and len(all_tasks_indices) >= num_train_tasks + num_eval_tasks
-            )
-            self.num_eval_tasks = None
-            rng = np.random.default_rng(self.seed)
-
-            shuffled_tasks = rng.permutation(all_tasks_indices)
-            if task_selection == "random":
-                assert train_test_split_present ^ eval_tasks_present
-                if train_test_split_present:
-                    num_train_tasks = int(train_test_split * len(all_tasks_indices))
-                    num_eval_tasks = len(all_tasks_indices) - num_train_tasks
-
-                self.train_tasks = shuffled_tasks[:num_train_tasks]
-                self.eval_tasks = shuffled_tasks[-num_eval_tasks:]
-            elif task_selection == "even":
-                self.train_tasks = shuffled_tasks
-                self.eval_tasks = shuffled_tasks
-                if num_eval_tasks is not None:
-                    assert (
-                        num_eval_tasks <= len(shuffled_tasks)
-                        and num_eval_tasks % 2 == 0
-                    )
-                    self.num_eval_tasks = num_eval_tasks
-            elif task_selection == "random-word":
-                assert train_test_split_present
-
-                # Find which tasks belong to the same word
-                tasks_by_class = np.array(get_tasks_by_type(self.train_env, "word"))
-                shuffled_words = rng.permutation(list(range(len(tasks_by_class))))
-
-                # Select which words to include in test and train
-                num_train_words = int(train_test_split * tasks_by_class.shape[0])
-                train_words = shuffled_words[:num_train_words]
-                eval_words = shuffled_words[num_train_words:]
-
-                self.train_tasks = tasks_by_class[train_words].reshape(-1)
-                self.eval_tasks = tasks_by_class[eval_words].reshape(-1)
-            elif task_selection == "random-within-word":
-                # Add 80% of tasks that belong to the same word to train and 20% to eval
-                assert train_test_split_present
-
-                tasks_by_class = np.array(
-                    get_tasks_by_type(self.train_env, "word")
-                )  # (num_words, num_tasks_per_word)
-                rng.shuffle(
-                    tasks_by_class.transpose()
-                )  # (num_tasks_per_word, num_words)
-
-                # Select which words to include in test and train
-                num_train_sentences = int(train_test_split * tasks_by_class.shape[1])
-
-                # Select how many sentences to include in test and train
-                self.train_tasks = tasks_by_class[:, num_train_sentences:].reshape(-1)
-                self.eval_tasks = tasks_by_class[:, :num_train_sentences].reshape(-1)
-            else:
-                raise ValueError(f"Unknown task selection '{task_selection}'")
-
+            if num_eval_tasks is not None:
+                self.eval_tasks = self.eval_tasks[:num_eval_tasks]
+            if num_train_tasks is not None:
+                self.train_tasks = self.train_tasks[:num_train_tasks]
         else:
             # NOTE: This is on-policy varibad's setting, i.e. unlimited training tasks
             assert num_tasks is num_train_tasks is None
@@ -126,19 +68,7 @@ class MetaLearner(Learner):
         if do_train_eval:
             train_results = self.evaluate(self.train_tasks[: len(self.eval_tasks)])
 
-        eval_tasks = self.eval_tasks
-        if self.num_eval_tasks is not None:
-            task_list = get_tasks_by_type(self.eval_env, "task_type")
-            eval_tasks = np.concatenate(
-                [
-                    np.random.choice(
-                        task, size=self.num_eval_tasks // len(task_list), replace=False
-                    )
-                    for task in task_list
-                ]
-            )
-
-        eval_results = self.evaluate(eval_tasks)
+        eval_results = self.evaluate(self.eval_tasks)
         if self.eval_stochastic:
             eval_sto_results = self.evaluate(self.eval_tasks, deterministic=False)
 
@@ -306,15 +236,65 @@ class MetaLearner(Learner):
         return eval_results
 
 
+def get_train_test(
+    tasks: list[MazeTask], task_selection: str, split: float
+) -> tuple[list[MazeTask], list[MazeTask]]:
+    # NOTE: This is off-policy varibad's setting, i.e. limited training tasks
+    # split to train/eval tasks. If train_test_split is None, then num_train_tasks
+    # and num_eval_tasks must be specified.
+
+    selection_to_task_key = {
+        "random": "all",
+        "random-word": "word",
+        "random-within-word": "word",
+    }
+    if task_selection == "even":
+        shuffled_tasks = ptu.randperm(len(tasks))
+        train_tasks = [tasks[i] for i in shuffled_tasks]
+        return train_tasks, train_tasks
+    if task_selection not in selection_to_task_key:
+        raise ValueError(f"Unknown task selection '{task_selection}'")
+
+    task_key = selection_to_task_key[task_selection]
+    tasks_by_class = get_tasks_by_type(tasks, task_key)
+    if task_selection == "random-word":
+        tasks_by_class = tasks_by_class.transpose(0, 1)
+        tasks_per_group, num_words = tasks_by_class.shape
+        shuffled_indices = ptu.randperm(num_words)
+        shuffled_tasks = tasks_by_class[:, shuffled_indices]
+        tasks_per_group = num_words
+    else:
+        num_groups, tasks_per_group = tasks_by_class.shape
+        shuffled_indices = torch.stack(
+            [ptu.randperm(tasks_per_group) for _ in range(num_groups)]
+        )
+        shuffled_tasks = torch.gather(tasks_by_class, dim=1, index=shuffled_indices)
+
+    # Select which words to include in test and train
+    num_train_sentences = int(split * tasks_per_group)
+
+    # Select how many sentences to include in test and train
+    train_tasks_indices = shuffled_tasks[:, :num_train_sentences].reshape(-1)
+    eval_tasks_indices = shuffled_tasks[:, num_train_sentences:].reshape(-1)
+
+    train_tasks = [tasks[i] for i in train_tasks_indices]
+    eval_tasks = [tasks[i] for i in eval_tasks_indices]
+    return train_tasks, eval_tasks
+
+
 def get_tasks_by_type(
-    env: Env, key: str = Literal["task_type", "word", "all"]
-) -> list[list[int]]:
-    tasks: list[MazeTask] = env.get_wrapper_attr("get_all_tasks")()
+    tasks: list[MazeTask], key: str = Literal["task_type", "word", "all"]
+) -> Tensor:  # (num_keys, num_tasks_per_key)
     if key == "all":
-        return [list(range(len(tasks)))]
+        return ptu.arange(len(tasks)).unsqueeze(dim=0)
 
     tasks_by_class_dict: dict[int, list[int]] = defaultdict(lambda: [])
     for index, task in enumerate(tasks):
         tasks_by_class_dict[getattr(task, key)].append(index)
 
-    return list(tasks_by_class_dict.values())
+    return ptu.tensor(list(tasks_by_class_dict.values()))
+
+
+def get_tasks_by_index(env: Env, indices: Tensor) -> list[MazeTask]:
+    tasks: list[MazeTask] = env.get_wrapper_attr("get_all_tasks")()
+    return [tasks[i] for i in indices]
