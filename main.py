@@ -48,6 +48,7 @@ def define_flags():
     )
     flags.DEFINE_integer("num_cpus", None, "How many cpus to use.")
     flags.DEFINE_float("uncertainty_scale", None, "The scale of the uncertainty.")
+    flags.DEFINE_float("split", None, "Train test split.")
 
     flags.FLAGS(sys.argv)
 
@@ -69,6 +70,8 @@ def load_config() -> dict:
         )
     if FLAGS.task_selection is not None:
         v["env"]["task_selection"] = FLAGS.task_selection
+    if FLAGS.split is not None:
+        v["env"]["train_test_split"] = FLAGS.split
 
     if (
         FLAGS.num_updates_per_iter_float is not None

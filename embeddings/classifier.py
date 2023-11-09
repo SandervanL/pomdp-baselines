@@ -1,11 +1,9 @@
 from collections import defaultdict
 from functools import reduce
-from typing import Literal
+from typing import Literal, Optional
 
 import dill
-import numpy as np
 import torch
-import wandb
 from torch import nn, optim, Tensor
 from tqdm import tqdm
 
@@ -33,13 +31,14 @@ def main(input_file: str, output_csv: str):
 
     ptu.set_gpu_mode(True)
     x = torch.cat([task.embedding.unsqueeze(0) for task in tasks], dim=0).to(ptu.device)
-    y = torch.tensor([task.task_type for task in tasks]).to(ptu.device)
+    y = ptu.tensor([task.task_type for task in tasks])
 
     for train_test_split in [0.1, 0.3, 0.5, 0.8, 1]:
         for task_selection in ["random", "random-word", "random-within-word"]:
             train_indices, eval_indices = get_train_test(
                 tasks, task_selection, train_test_split
             )
+
             print(f"Split: {train_test_split}, selection: {task_selection}")
             epochs = 40
             num_seeds = 48
@@ -49,60 +48,88 @@ def main(input_file: str, output_csv: str):
                 train_x, train_y = x[train_indices], y[train_indices]
                 eval_x, eval_y = x[eval_indices], y[eval_indices]
 
-                if eval_x.shape[0] == 0:
-                    eval_x, eval_y = train_x, train_y
+                _, result = train_classifier(
+                    epochs, tasks, train_x, train_y, eval_x, eval_y
+                )
+                result_data[seed, :, :] = result
 
-                n_classes = len({task.task_type for task in tasks})
-                classifier = build_classifier(
-                    tasks[0].embedding.shape[0], n_classes, 128
-                ).to(ptu.device)
-                criterion = nn.CrossEntropyLoss()
-                optimizer = optim.Adam(classifier.parameters(), lr=0.001)
+            write_data_to_csv(
+                output_csv, result_data, input_file, train_test_split, task_selection
+            )
 
-                for epoch in range(epochs):
-                    optimizer.zero_grad()
-                    output = classifier(train_x)
-                    loss = criterion(output, train_y)
-                    loss.backward()
-                    optimizer.step()
-                    train_loss = (loss / train_x.shape[0]).unsqueeze(dim=0).detach()
 
-                    train_accuracy = (
-                        ((output.argmax(dim=-1) == train_y).sum() / train_x.shape[0])
-                        .unsqueeze(dim=0)
-                        .detach()
-                    )
+def write_data_to_csv(
+    output_csv: str,
+    result_data: Tensor,
+    input_file: str,
+    train_test_split: float,
+    task_selection: str,
+) -> None:
+    result_data = result_data.to("cpu")
+    with open(output_csv, "at") as file:
+        for seed in range(result_data.shape[0]):
+            for epoch in range(result_data.shape[1]):
+                (
+                    train_loss,
+                    train_accuracy,
+                    eval_loss,
+                    eval_accuracy,
+                ) = result_data[seed, epoch, :]
+                file.write(
+                    f"{input_file},{train_test_split},{task_selection},{epoch},{train_loss},{train_accuracy},{eval_loss},{eval_accuracy}\n"
+                )
 
-                    with torch.no_grad():
-                        output = classifier(eval_x)
-                        eval_accuracy = (
-                            ((output.argmax(dim=-1) == eval_y).sum() / eval_x.shape[0])
-                            .unsqueeze(dim=0)
-                            .detach()
-                        )
-                        eval_loss = (
-                            (criterion(output, eval_y) / eval_x.shape[0])
-                            .unsqueeze(dim=0)
-                            .detach()
-                        )
 
-                    result_data[seed, epoch, :] = torch.concatenate(
-                        [train_loss, train_accuracy, eval_loss, eval_accuracy]
-                    )
+def train_classifier(
+    epochs: int,
+    tasks: list[MazeTask],
+    train_x: Tensor,
+    train_y: Tensor,
+    eval_x: Optional[Tensor] = None,
+    eval_y: Optional[Tensor] = None,
+) -> (nn.Module, Tensor):
+    if eval_x is None or eval_x.shape[0] == 0:
+        eval_x, eval_y = train_x, train_y
 
-            result_data = result_data.to("cpu")
-            with open(output_csv, "at") as file:
-                for seed in range(num_seeds):
-                    for epoch in range(epochs):
-                        (
-                            train_loss,
-                            train_accuracy,
-                            eval_loss,
-                            eval_accuracy,
-                        ) = result_data[seed, epoch, :]
-                        file.write(
-                            f"{input_file},{train_test_split},{task_selection},{epoch},{train_loss},{train_accuracy},{eval_loss},{eval_accuracy}\n"
-                        )
+    n_classes = len({task.task_type for task in tasks})
+    classifier = build_classifier(
+        tasks[0].embedding.shape[0], n_classes, 128  # 128
+    ).to(ptu.device)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(classifier.parameters(), lr=0.001)
+
+    result = ptu.zeros((epochs, 4))
+
+    for epoch in range(epochs):
+        optimizer.zero_grad()
+        output = classifier(train_x)
+        loss = criterion(output, train_y)
+        loss.backward()
+        optimizer.step()
+        train_loss = (loss / train_x.shape[0]).unsqueeze(dim=0).detach()
+
+        train_accuracy = (
+            ((output.argmax(dim=-1) == train_y).sum() / train_x.shape[0])
+            .unsqueeze(dim=0)
+            .detach()
+        )
+
+        with torch.no_grad():
+            output = classifier(eval_x)
+            eval_accuracy = (
+                ((output.argmax(dim=-1) == eval_y).sum() / eval_x.shape[0])
+                .unsqueeze(dim=0)
+                .detach()
+            )
+            eval_loss = (
+                (criterion(output, eval_y) / eval_x.shape[0]).unsqueeze(dim=0).detach()
+            )
+
+        result[epoch, :] = torch.concatenate(
+            [train_loss, train_accuracy, eval_loss, eval_accuracy]
+        )
+
+    return classifier, result
 
 
 def get_train_test(
@@ -169,7 +196,7 @@ if __name__ == "__main__":
         # "embeddings/one_direction/words_word2vec.dill",
         # "embeddings/one_direction/perfect.dill",
     ]
-    output_csv = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\classifier\\generalization\\progress-filled.csv"
+    output_csv = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\classifier\\generalization\\large-progress-filled.csv"
     with open(output_csv, "wt") as csv_file:
         csv_file.write(
             "file,split,task_selection,z/env_steps,metrics/train_loss,metrics/train_accuracy,metrics/eval_loss,metrics/eval_accuracy\n"

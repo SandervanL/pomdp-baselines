@@ -4,7 +4,7 @@
 seeds=(42)
 
 # Define the list of gammas
-task_files=("left_longhook.dill" "leftright_longhook.dill" "left_longstraight.dill" "leftright_longstraight.dill" "left_allstraight.dill" "leftright_allstraight.dill")
+task_files=("all_directions_negation" "all_directions" "leftright_directions" "left_directions")
 
 working_dir=$(pwd)
 

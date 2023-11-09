@@ -120,7 +120,7 @@ def gpu_enabled() -> bool:
 
 # noinspection PyPep8Naming
 def FloatTensor(*args, **kwargs) -> FloatTensor:
-    return torch.FloatTensor(*args, **kwargs).to(device)
+    return torch.FloatTensor(*args, **kwargs, device=device)
 
 
 def from_numpy(*args, **kwargs) -> Tensor:
@@ -132,39 +132,39 @@ def get_numpy(tensor: Tensor) -> np.ndarray:
 
 
 def zeros(*sizes, **kwargs) -> Tensor:
-    return torch.zeros(*sizes, **kwargs).to(device)
+    return torch.zeros(*sizes, **kwargs, device=device)
 
 
 def ones(*sizes, **kwargs) -> Tensor:
-    return torch.ones(*sizes, **kwargs).to(device)
+    return torch.ones(*sizes, **kwargs, device=device)
 
 
 def randn(*args, **kwargs) -> Tensor:
-    return torch.randn(*args, **kwargs).to(device)
+    return torch.randn(*args, **kwargs, device=device)
 
 
 def zeros_like(*args, **kwargs) -> Tensor:
-    return torch.zeros_like(*args, **kwargs).to(device)
+    return torch.zeros_like(*args, **kwargs, device=device)
 
 
 def ones_like(*args, **kwargs) -> Tensor:
-    return torch.ones_like(*args, **kwargs).to(device)
+    return torch.ones_like(*args, **kwargs, device=device)
 
 
 def randn_like(*args, **kwargs) -> Tensor:
-    return torch.randn_like(*args, **kwargs).to(device)
+    return torch.randn_like(*args, **kwargs, device=device)
 
 
 def normal(*args, **kwargs) -> Tensor:
-    return torch.normal(*args, **kwargs).to(device)
+    return torch.normal(*args, **kwargs, device=device)
 
 
 def tensor(*args, **kwargs) -> Tensor:
-    return torch.tensor(*args, **kwargs).to(device)
+    return torch.tensor(*args, **kwargs, device=device)
 
 
 def empty(*args, **kwargs) -> Tensor:
-    return torch.empty(*args, **kwargs).to(device)
+    return torch.empty(*args, **kwargs, device=device)
 
 
 def empty_tensor_like(tensor: Tensor) -> Tensor:
@@ -174,19 +174,15 @@ def empty_tensor_like(tensor: Tensor) -> Tensor:
 
 
 def arange(*args, **kwargs) -> Tensor:
-    return torch.arange(*args, **kwargs).to(device)
+    return torch.arange(*args, **kwargs, device=device)
 
 
 def randint(*args, **kwargs) -> Tensor:
-    return torch.randint(*args, **kwargs).to(device)
+    return torch.randint(*args, **kwargs, device=device)
 
 
 def randperm(*args, **kwargs) -> Tensor:
-    return torch.randperm(*args, **kwargs).to(device)
-
-
-def to_device(tensor: Tensor) -> Tensor:
-    return tensor.to(device)
+    return torch.randperm(*args, **kwargs, device=device)
 
 
 def round_tensor(tensor: Tensor, n_digits: int) -> Tensor:

@@ -184,9 +184,10 @@ def task_exists(tasks: list[dict], task: dict) -> bool:
 
 
 def filter_sentence(sentence: str) -> str:
+    sentence = re.sub(r"^[0-9. \")(]", "", sentence).strip()
+    sentence = re.sub(r"[.\"]$", "", sentence).strip()
     return (
-        re.sub(r"[0-9.]", "", sentence)
-        .replace("\u2019", "'")
+        sentence.replace("\u2019", "'")
         .replace("\u2013", "-")
         .replace("\u2014", "-")
         .replace('"', "")

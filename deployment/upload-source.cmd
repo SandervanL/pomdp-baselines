@@ -6,5 +6,5 @@ if exist %destination% del %destination%
 
 scp -i C:\Users\Sander\.ssh\delftblue_rsa %destination% sajvanleeuwen@login.delftblue.tudelft.nl:/scratch/sajvanleeuwen/pomdp-baselines.zip
 
-set target_dir=generalization
+set target_dir=positional-encodings
 ssh delftblue "rm -rf /scratch/sajvanleeuwen/%target_dir%; unzip /scratch/sajvanleeuwen/pomdp-baselines.zip -d /scratch/sajvanleeuwen/%target_dir%; rm /scratch/sajvanleeuwen/pomdp-baselines.zip; exit"

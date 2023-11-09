@@ -1,35 +1,20 @@
+import json
 import os
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import dill
 import numpy as np
+import torch
 from torch import Tensor
 
+from envs.meta.maze.MazeTask import MazeTask
 from envs.pomdp.Maze import Maze
 from mazelab import Object, VonNeumannMotion
 from mazelab import DeepMindColor as Color
 import torchkit.pytorch_utils as ptu
-
-
-@dataclass
-class MazeTask:
-    """Maze task class."""
-
-    embedding: Tensor
-    blocked: bool
-    task_type: int  # unique number for each type (high vs low, heavy vs light, etc)
-    word: str
-    sentence: str
-    object_type: str
-
-    # Directions of the map hallways
-    short_direction: int
-    short_hook_direction: int
-    long_direction: int
-    long_hook_direction: int
 
 
 class MultitaskMaze(Maze):
@@ -80,13 +65,40 @@ class MultitaskMaze(Maze):
 def load_tasks_file(filename: str) -> list[MazeTask]:
     main_path = Path(__file__).resolve().parent.parent.parent.parent
     file_path = os.path.join(main_path, filename)
+
+    if os.path.isfile(file_path) and file_path.endswith(".dill"):
+        return load_dill_tasks_file(file_path)
+
+    # Check if it is a dir
+    if os.path.isdir(file_path):
+        return load_tasks_dir(file_path)
+
+    raise ValueError(f"Could not find task file '{file_path}'")
+
+
+def load_dill_tasks_file(file_path: str) -> list[MazeTask]:
     with open(file_path, "rb") as file:
         tasks = dill.load(file)
 
     for task in tasks:
-        task.embedding = ptu.to_device(task.embedding)
+        task.embedding = task.embedding.to(ptu.device)
 
     return tasks
+
+
+def load_tasks_dir(dir_path: str) -> list[MazeTask]:
+    json_path = os.path.join(dir_path, "tasks.json")
+    with open(json_path, "r") as file:
+        tasks: list[dict] = json.load(file)
+
+    embeddings_path = os.path.join(dir_path, "embeddings.pt")
+    embeddings = torch.load(embeddings_path).to(ptu.device)
+
+    result: list[Optional[MazeTask]] = [None] * len(tasks)
+    for index, (task, embedding) in enumerate(zip(tasks, embeddings)):
+        result[index] = MazeTask(embedding=embedding, **task)
+
+    return result
 
 
 def build_maze(task: MazeTask) -> np.ndarray:

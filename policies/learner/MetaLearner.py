@@ -43,8 +43,7 @@ class MetaLearner(Learner):
             self.train_tasks, self.eval_tasks = get_train_test(
                 tasks, task_selection, train_test_split
             )
-            if num_eval_tasks is not None:
-                self.eval_tasks = self.eval_tasks[:num_eval_tasks]
+            self.num_eval_tasks = num_eval_tasks
             if num_train_tasks is not None:
                 self.train_tasks = self.train_tasks[:num_train_tasks]
         else:
@@ -68,7 +67,14 @@ class MetaLearner(Learner):
         if do_train_eval:
             train_results = self.evaluate(self.train_tasks[: len(self.eval_tasks)])
 
-        eval_results = self.evaluate(self.eval_tasks)
+        if self.num_eval_tasks is None:
+            eval_tasks = self.eval_tasks
+        else:
+            eval_indices = torch.randperm(len(self.eval_tasks), device="cpu")
+            eval_tasks = [
+                self.eval_tasks[i] for i in eval_indices[: self.num_eval_tasks]
+            ]
+        eval_results = self.evaluate(eval_tasks)
         if self.eval_stochastic:
             eval_sto_results = self.evaluate(self.eval_tasks, deterministic=False)
 
@@ -252,6 +258,8 @@ def get_train_test(
         shuffled_tasks = ptu.randperm(len(tasks))
         train_tasks = [tasks[i] for i in shuffled_tasks]
         return train_tasks, train_tasks
+
+    assert split is not None
     if task_selection not in selection_to_task_key:
         raise ValueError(f"Unknown task selection '{task_selection}'")
 

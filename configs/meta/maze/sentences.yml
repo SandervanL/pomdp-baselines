@@ -11,6 +11,7 @@ env:
                        # "random-within-word" make random train/eval split within each word (for unknown formulation evaluation)
   valid_actions: false
   train_test_split: 0.8
+  num_eval_tasks: 200
 
 train:
   # 1000*100 = 10k steps

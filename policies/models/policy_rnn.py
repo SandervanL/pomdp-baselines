@@ -164,10 +164,6 @@ class ModelFreeOffPolicy_Separate_RNN(nn.Module):
         )
         num_valid = torch.clamp(masks.sum(), min=1.0)  # as denominator of loss
 
-        logger.log(
-            f"total RAM usage: {psutil.Process().memory_info().rss / 1024 ** 3 :.2f} GB\n"
-        )
-
         ### 1. Critic loss
         (q1_pred, q2_pred), q_target = self.algo.critic_loss(
             markov_actor=self.Markov_Actor,

@@ -5,8 +5,10 @@ import torch
 from torch import Tensor
 from torch.nn import Module, functional as F
 
+from embeddings.classifier import train_classifier
+from envs.meta.maze.MultitaskMaze import MazeTask
 from policies.rl.base import RLAlgorithmBase
-from utils import helpers as utl
+from utils import helpers as utl, logger
 from torchkit.constant import *
 import torchkit.pytorch_utils as ptu
 
@@ -27,8 +29,10 @@ class BaseRnn(Module, metaclass=abc.ABCMeta):
         image_encoder=None,
         embedding_rnn_init: int = 0,
         embedding_obs_init: int = 0,
-        embedding_grad: str = "no-grad",
-        **kwargs
+        embedding_grad: str = "grad",
+        pretrain: Optional[dict] = None,
+        tasks: Optional[list[MazeTask]] = None,
+        **kwargs,
     ):
         """
 
@@ -94,9 +98,17 @@ class BaseRnn(Module, metaclass=abc.ABCMeta):
             embedding_rnn_init & 2 > 0, embedding_grad, task_dim, rnn_hidden_size
         )
 
-        self.task_obs_embedder, task_obs_embedding_size = get_feature_extractor(
-            embedding_obs_init & 1 > 0, embedding_grad, task_dim, observ_embedding_size
-        )
+        if pretrain is not None:
+            self.task_obs_embedder, task_obs_embedding_size = get_pretrained_embedder(
+                tasks, **pretrain
+            )
+        else:
+            self.task_obs_embedder, task_obs_embedding_size = get_feature_extractor(
+                embedding_obs_init & 1 > 0,
+                embedding_grad,
+                task_dim,
+                observ_embedding_size,
+            )
         (
             self.task_proxy_embedder,
             self.task_proxy_embedding_size,
@@ -234,8 +246,21 @@ def get_feature_extractor(
     use_grad = grad == "grad"
     activation = F.relu if use_grad else ptu.identity
     return (
-        utl.FeatureExtractor(
-            task_embedding_size, hidden_size, activation
-        ).requires_grad_(use_grad),
+        utl.FeatureExtractor(task_embedding_size, hidden_size, activation),
         hidden_size,
     )
+
+
+def get_pretrained_embedder(
+    tasks: list[MazeTask], epochs: int
+) -> tuple[Callable[[Tensor], Tensor], int]:
+    logger.log(f"Pretraining embedder...")
+    x = torch.stack([task.embedding for task in tasks])
+    y = ptu.tensor([task.task_type for task in tasks])
+    classifier, evaluation = train_classifier(epochs, tasks, x, y)
+    logger.log(f"Pretraining finished. Train Acc: {evaluation[-1, 1]}")
+    output_dim = 0
+    for param in classifier.parameters():
+        param.requires_grad = False
+        output_dim = param.shape[0]
+    return classifier, output_dim

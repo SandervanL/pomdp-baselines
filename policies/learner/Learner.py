@@ -52,7 +52,7 @@ class Learner:
 
         self._init_env(**env_args)
 
-        self.init_agent(**policy_args)
+        self.init_agent(**policy_args, tasks=self.train_tasks)
 
         self.init_train(**train_args)
 
