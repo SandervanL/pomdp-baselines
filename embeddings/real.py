@@ -1,14 +1,11 @@
 import json
 import os
 import re
-from copy import deepcopy
-from dataclasses import dataclass
-from typing import Callable, Optional, Literal
+from typing import Callable, Optional, Literal, Set
 
 import numpy as np
 import torch
 from torch import Tensor
-import dill
 
 from envs.meta.maze.MazeTask import MazeTask
 from torchkit import pytorch_utils as ptu
@@ -20,6 +17,15 @@ def create_sentence_embedding(
     tasks: list[dict],
     embedder: Callable[[list[str]], Tensor],
 ) -> list[MazeTask]:
+    """
+    Create embeddings for the given tasks.
+    Args:
+        tasks: The tasks to create embeddings for.
+        embedder: The function to create embeddings for the sentences.
+
+    Returns:
+        List of tasks with the embeddings.
+    """
     embeddings = embedder([sentence["sentence"].strip().lower() for sentence in tasks])
 
     result_tasks: list[Optional[MazeTask]] = [None] * len(tasks)
@@ -33,6 +39,16 @@ word_buffer = []
 
 
 def task_hash(task: dict) -> int:
+    """
+    Create a hash for the given task.
+    It does so based on the word, blocked, task_type, short_direction, short_hook_direction,
+    long_direction, and long_hook_direction.
+    Args:
+        task: The task to create a hash for.
+
+    Returns:
+        The hash for the task.
+    """
     global word_buffer
     word = task["word"]
     if word in word_buffer:
@@ -52,9 +68,27 @@ def task_hash(task: dict) -> int:
 
 
 def create_word_embedding(attribute: str):
+    """
+    Create a function that creates embeddings for the given attribute.
+    Args:
+        attribute: The MazeTask attribute to create embeddings for (word, task_type).
+
+    Returns:
+        Function that creates embeddings for the given attribute.
+    """
+
     def embedding_creator(
         tasks: list[dict], embedder: Callable[[list[str]], Tensor]
     ) -> list[MazeTask]:
+        """
+        Create embeddings for the given attribute.
+        Args:
+            tasks: The tasks to create embeddings for.
+            embedder: The function to create embeddings for the attribute.
+
+        Returns:
+            List of tasks with the embeddings.
+        """
         # Find unique values for the attribute
         unique_words = {task_hash(task): task for task in tasks}
         embeddings = embedder(
@@ -75,10 +109,39 @@ def create_word_embedding(attribute: str):
     return embedding_creator
 
 
+sbert_model = None
+
+
+def get_sbert_embedding(sentences: list[str]) -> Tensor:
+    """
+    Create embeddings for the given sentences using SBERT.
+    Args:
+        sentences: The sentences to create embeddings for.
+
+    Returns:
+        Tensor with sentence embeddings (len(sentences), 768)
+    """
+    global sbert_model
+    from sentence_transformers import SentenceTransformer
+
+    if sbert_model is None:
+        sbert_model = SentenceTransformer("all-mpnet-base-v2")
+
+    return sbert_model.encode(sentences)
+
+
 simcse_model = None
 
 
 def get_simcse_embedding(sentences: list[str]) -> Tensor:
+    """
+    Create embeddings for the given sentences using SimCSE.
+    Args:
+        sentences: The sentences to create embeddings for.
+
+    Returns:
+        Tensor with sentence embeddings (len(sentences), 1024)
+    """
     global simcse_model
     from simcse import SimCSE
 
@@ -88,16 +151,66 @@ def get_simcse_embedding(sentences: list[str]) -> Tensor:
     return simcse_model.encode(sentences)
 
 
+infersent_model = None
+
+
+def get_infersent_embedding(sentences: list[str]) -> Tensor:
+    """
+    Create embeddings for the given sentences using InferSent.
+    Args:
+        sentences: The sentences to create embeddings for.
+
+    Returns:
+        Tensor with sentence embeddings (len(sentences), 4096)
+    """
+    global infersent_model
+    from infersent import InferSent
+
+    if infersent_model is None:
+        infersent_model = InferSent(
+            {
+                "bsize": 64,
+                "word_emb_dim": 300,
+                "enc_lstm_dim": 2048,
+                "pool_type": "max",
+                "dpout_model": "dpout_model",
+                "version": 2,
+            }
+        )
+        base_folder = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\repos\\infersent"
+        infersent_model.load_state_dict(
+            torch.load(os.path.join(base_folder, "infersent2.pkl"))
+        )
+        infersent_model.set_w2v_path(os.path.join(base_folder, "crawl-300d-2M.vec"))
+
+    infersent_model.build_vocab(sentences, tokenize=True)
+    return ptu.from_numpy(np.copy(infersent_model.encode(sentences, tokenize=True)))
+
+
 word2vec_model = None
 
 
 def get_word2vec_embedding(
     positional: bool = False,
 ) -> Callable[[list[str]], Tensor]:
-    def word2vec_embedding(sentences: list[str]) -> Tensor:
-        global word2vec_model
-        import gensim.downloader
+    """
+    Create a function that creates embeddings for the given sentences using Word2Vec.
+    Args:
+        positional: Whether to add positional encodings to the Word2Vec embeddings.
 
+    Returns:
+        Function that creates embeddings for the given sentences.
+    """
+
+    def word2vec_embedding(sentences: list[str]) -> Tensor:
+        """
+        Create embeddings for the given sentences using Word2Vec.
+        Args:
+            sentences: The sentences to create embeddings for.
+
+        Returns:
+            Tensor with sentence embeddings (len(sentences), 300)
+        """
         # Create positional encodings
         max_words = count_max_words(sentences)
         positional_encodings = (
@@ -106,75 +219,112 @@ def get_word2vec_embedding(
             else ptu.ones((max_words, 300))
         )
 
-        if word2vec_model is None:
-            word2vec_model = gensim.downloader.load("word2vec-google-news-300")
-
+        # Create the embeddings for each sentence
         result_tensor = ptu.zeros((len(sentences), 300))
         unknown_words = set()
         for sentence_index, sentence in enumerate(sentences):
-            embeddings = ptu.zeros((max_words, 300))
-            filtered_sentence = filter_sentence(sentence)
-
-            # Extract the word embeddings
-            length = 0
-            for index, word in enumerate(filtered_sentence.split(" ")):
-                if len(word) == 0 or word in ["to", "and", "of"]:
-                    continue
-                if word in word2vec_model and not np.any(
-                    np.isinf(word2vec_model[word])
-                ):
-                    length += 1
-                    embeddings[index, :] = ptu.from_numpy(np.copy(word2vec_model[word]))
-                else:
-                    unknown_words.add(word)
-
-            if length == 0:
-                raise ValueError(f"Sentence '{sentence}' has no words in word2vec")
-
-            # Multiply with the positional encodings
-            emb_and_pos = torch.mul(embeddings, positional_encodings)
-            result_tensor[sentence_index, :] = torch.sum(emb_and_pos, dim=0) / length
-
-            # Check for inf
-            if torch.where(emb_and_pos == torch.inf)[0].shape[0] > 0:
-                raise ValueError(f"Sentence '{sentence}' has inf in result")
+            result_tensor[sentence_index, :], words = _get_word2vec_embedding(
+                sentence, positional_encodings
+            )
+            unknown_words.update(words)
 
         if len(unknown_words) > 0:
             print(f"Unknown words: {unknown_words}")
+
         return result_tensor
 
     return word2vec_embedding
 
 
+def _get_word2vec_embedding(
+    sentence: str, positional_encodings: Tensor
+) -> (Tensor, Set):
+    """
+    Create an embedding for the given sentence using Word2Vec.
+    Args:
+        sentence: The sentence to create an embedding for.
+        positional_encodings: The positional encodings to multiply with the word embeddings.
+
+    Returns:
+        Tensor with the sentence embedding (300,)
+    """
+    global word2vec_model
+    import gensim.downloader
+
+    if word2vec_model is None:
+        word2vec_model = gensim.downloader.load("word2vec-google-news-300")
+
+    embeddings = ptu.zeros(positional_encodings.shape)
+    filtered_sentence = filter_sentence(sentence)
+
+    # Extract the word embeddings
+    unknown_words = set()
+    length = 0
+    for index, word in enumerate(filtered_sentence.split(" ")):
+        if len(word) == 0 or word in ["to", "and", "of"]:
+            continue
+        if word in word2vec_model and not np.any(np.isinf(word2vec_model[word])):
+            length += 1
+            embeddings[index, :] = ptu.from_numpy(np.copy(word2vec_model[word]))
+        else:
+            unknown_words.add(word)
+
+    if length == 0:
+        raise ValueError(f"Sentence '{sentence}' has no words in word2vec")
+
+    # Multiply with the positional encodings, and sum
+    positioned_embeddings = torch.mul(embeddings, positional_encodings)
+    embedding = torch.sum(positioned_embeddings, dim=0) / length
+
+    # Check for inf
+    if torch.where(embedding == torch.inf)[0].shape[0] > 0:
+        raise ValueError(f"Sentence '{sentence}' has inf in result")
+
+    return embedding, unknown_words
+
+
 def create_embeddings(
-    folder: str,
+    output_folder: str,
     input_file: str,
-    use_word2vec: bool = False,
+    model_name: Literal["simcse", "sbert", "infersent", "word2vec"] = "simcse",
     type_name: Literal["sentences", "words", "object_type"] = "sentences",
     positional: bool = False,
 ):
-    model_name = "word2vec" if use_word2vec else "simcse"
+    """
+    Create embeddings for the given type.
+    Args:
+        output_folder: The folder to save the embeddings to.
+        input_file: The file with the tasks.
+        model_name: The embedding model to use.
+        type_name: The type of embedding to create.
+        positional: Whether to add positional encodings to the Word2Vec embeddings.
+    """
+    embedders = {
+        "simcse": get_simcse_embedding,
+        "sbert": get_sbert_embedding,
+        "infersent": get_infersent_embedding,
+        "word2vec": get_word2vec_embedding(positional),
+    }
+    assert model_name in embedders
     pos_name = "_pos" if positional else ""
-    output_file = f"{type_name}_{model_name}{pos_name}"
-    print(f"Creating embeddings for {output_file}")
+    output_dirname = f"{type_name}_{model_name}{pos_name}"
+    print(f"Creating embeddings for {output_dirname}")
 
-    with open(os.path.join(folder, input_file), "r") as file:
+    with open(input_file, "r") as file:
         inputs: list[dict] = json.load(file)
 
-    embedder = (
-        get_word2vec_embedding(positional) if use_word2vec else get_simcse_embedding
-    )
     creators = {
         "sentences": create_sentence_embedding,
         "words": create_word_embedding("word"),
         "object_type": create_word_embedding("object_type"),
     }
     creator = creators[type_name]
-    tasks = creator(inputs, embedder)
-    save_tasks(tasks, os.path.join(folder, output_file))
+    tasks = creator(inputs, embedders[model_name])
+    save_tasks(tasks, os.path.join(output_folder, output_dirname))
 
 
 def directions_index(directions: list[list[str]], direction: str) -> int:
+    """Get the index of the list that contains the direction."""
     for index, direction_list in enumerate(directions):
         if direction in direction_list:
             return index
@@ -182,6 +332,11 @@ def directions_index(directions: list[list[str]], direction: str) -> int:
 
 
 def main_multiple_directions(in_file: str):
+    """
+    Create embeddings for all directions and all combinations of directions.
+    Args:
+        in_file: The file with the tasks.
+    """
     with open(in_file, "r") as file:
         tasks: list[dict] = json.load(file)
 
@@ -207,7 +362,6 @@ def main_multiple_directions(in_file: str):
             )
             all_directions.append(maze_task)
 
-    print("breakpoint")
     save_tasks(all_directions, "all_directions_negation")
 
     just_directions = [task for task in all_directions if not task.negation]
@@ -225,6 +379,12 @@ def main_multiple_directions(in_file: str):
 
 
 def save_tasks(tasks: list[MazeTask], file_path: str):
+    """
+    Save the tasks to a file. Stores the embeddings in a separate file.
+    Args:
+        tasks: The tasks to save.
+        file_path: The directory to save the tasks to.
+    """
     os.makedirs(file_path, exist_ok=True)
     embeddings = torch.stack([task.embedding for task in tasks])
     torch.save(embeddings, os.path.join(file_path, "embeddings.pt"))
@@ -235,7 +395,7 @@ def save_tasks(tasks: list[MazeTask], file_path: str):
         del without_embeddings[index]["embedding"]
 
     with open(os.path.join(file_path, "tasks.json"), "w") as file:
-        json.dump(without_embeddings, file)
+        json.dump(without_embeddings, file, indent=4)
 
 
 def positional_encoding_matrix(n_words: int, n_dimensions: int) -> Tensor:
@@ -261,6 +421,7 @@ def positional_encoding_matrix(n_words: int, n_dimensions: int) -> Tensor:
 
 
 def count_max_words(sentences: list[str]) -> int:
+    """Count the maximum number of words in a sentence."""
     max_words = 0
     for sentence in sentences:
         max_words = max(len(filter_sentence(sentence).split(" ")), max_words)
@@ -268,31 +429,78 @@ def count_max_words(sentences: list[str]) -> int:
 
 
 def filter_sentence(sentence: str) -> str:
+    """Remove punctuation and non-alphabetical characters from sentence."""
     filtered_sentence = re.sub(r"[.,!?\'\"()-]", " ", sentence)
     filtered_sentence = re.sub(r"[^a-zA-Z ]", "", filtered_sentence)
     return filtered_sentence
 
 
 def main():
+    """
+    Create embeddings for words, sentences, and object types using SimCSE and Word2Vec.
+    Positional encodings can be added to the Word2Vec embeddings.
+    """
     ptu.set_gpu_mode(True)
     base_folder = (
         "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\embeddings2"
     )
-    folders = [
-        os.path.join(base_folder, "one_direction"),
-        os.path.join(base_folder, "two_directions"),
+    input_output = [
+        ["sentences/one_direction.json", os.path.join(base_folder, "one_direction")],
+        ["sentences/two_directions.json", os.path.join(base_folder, "two_directions")],
+        ["sentences/all_directions.json", os.path.join(base_folder, "all_directions")],
     ]
-    input_file = "sentences.json"
-    for folder in folders:
-        for use_word2vec in [True, False]:
-            for type_name in ["sentences", "words", "object_type"]:
-                positionals = [True, False] if use_word2vec else [False]
+    for input_file, output_folder in input_output:
+        for type_name in ["sentences", "words", "object_type"]:
+            embedding_models = (
+                ["simcse", "word2vec", "infersent", "sbert"]
+                if type_name in ["sentences", "words"]
+                else ["simcse"]
+            )
+            for embedding_model in embedding_models:
+                positionals = (
+                    [True, False]
+                    if embedding_model == "word2vec" and type_name == "sentences"
+                    else [False]
+                )
                 for positional in positionals:
                     create_embeddings(
-                        folder, input_file, use_word2vec, type_name, positional
+                        output_folder,
+                        input_file,
+                        embedding_model,
+                        type_name,
+                        positional,
                     )
 
 
+def anti_direction(direction: int) -> int:
+    return ((direction + 1) % 2) + 2 * (direction // 2)
+
+
+def add_directionality(file_path: str) -> None:
+    """
+    Add directionality to the sentences.
+    """
+    with open(file_path, "r") as file:
+        tasks: list[dict] = json.load(file)
+
+    with open("directions.json", "r") as file:
+        directions: list[list[str]] = json.load(file)
+
+    for task in tasks:
+        short_direction = directions_index(directions, task["direction"])
+        long_direction = anti_direction(short_direction)
+        task["short_direction"] = short_direction
+        task["short_hook_direction"] = short_direction
+        task["long_direction"] = long_direction
+        task["long_hook_direction"] = long_direction
+
+    # Append 2 before '.json'
+    out_file = file_path[:-5] + "2.json"
+    with open(out_file, "w") as file:
+        json.dump(tasks, file, indent=4)
+
+
 if __name__ == "__main__":
-    main()
+    add_directionality("sentences/all_directions.json")
+    # main()
     # main_multiple_directions("sentences_4_directions.json")
