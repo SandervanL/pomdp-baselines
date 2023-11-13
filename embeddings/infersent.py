@@ -15,6 +15,8 @@ import time
 import torch
 import torch.nn as nn
 
+from torchkit import pytorch_utils as ptu
+
 
 class InferSent(nn.Module):
     def __init__(self, config):
@@ -82,7 +84,7 @@ class InferSent(nn.Module):
 
         # Pooling
         if self.pool_type == "mean":
-            sent_len = torch.FloatTensor(sent_len.copy()).unsqueeze(1).cuda()
+            sent_len = ptu.FloatTensor(sent_len.copy()).unsqueeze(1).cuda()
             emb = torch.sum(sent_output, 0).squeeze(0)
             emb = emb / sent_len.expand_as(emb)
         elif self.pool_type == "max":
@@ -183,7 +185,7 @@ class InferSent(nn.Module):
             for j in range(len(batch[i])):
                 embed[j, i, :] = self.word_vec[batch[i][j]]
 
-        return torch.FloatTensor(embed)
+        return ptu.FloatTensor(embed)
 
     def tokenize(self, s):
         from nltk.tokenize import word_tokenize
@@ -227,7 +229,7 @@ class InferSent(nn.Module):
 
         # sort by decreasing length
         lengths, idx_sort = np.sort(lengths)[::-1], np.argsort(-lengths)
-        sentences = np.array(sentences)[idx_sort]
+        sentences = np.array(sentences, dtype=object)[idx_sort]
 
         return sentences, lengths, idx_sort
 

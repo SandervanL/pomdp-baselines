@@ -4,7 +4,7 @@
 seeds=(42)
 
 # Define the list of gammas
-task_files=("sentences_word2vec.dill" "words_word2vec.dill" "sentences_simcse.dill" "words_simcse.dill" "object_type_word2vec.dill" "object_type_simcse.dill")
+task_files=("sentences_word2vec" "words_word2vec" "sentences_simcse" "words_simcse" "object_type_word2vec" "object_type_simcse")
 
 working_dir=$(pwd)
 

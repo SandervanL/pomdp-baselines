@@ -243,8 +243,18 @@ def get_feature_extractor(
         return ptu.empty_tensor_like, 0
     if grad == "directly":
         return ptu.identity, task_embedding_size
-    use_grad = grad == "grad"
-    activation = F.relu if use_grad else ptu.identity
+    activations = {
+        "grad": F.relu,
+        "grad-relu": F.relu,
+        "grad-leaky": F.leaky_relu,
+        "grad-swish": F.silu,
+        "grad-elu": F.elu,
+        "grad-selu": F.selu,
+        "grad-gelu": F.gelu,
+        "grad-relu6": F.relu6,  # https://s3.ap-northeast-2.amazonaws.com/journal-home/journal/jips/fullText/477/jips_v16n5_7.pdf
+        "no-grad": ptu.identity,
+    }
+    activation = activations[grad]
     return (
         utl.FeatureExtractor(task_embedding_size, hidden_size, activation),
         hidden_size,

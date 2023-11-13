@@ -60,10 +60,10 @@ def repair_two_directions(input_file: str, output_file: str):
 
 if __name__ == "__main__":
     main_one_sentence(
-        "embeddings/one_direction/sentences_simcse.dill",
-        "embeddings/all_directions/left_allstraight.dill",
+        "embeddings/one_direction/sentences_simcse",
+        "embeddings/all_directions/left_allstraight",
     )
     main_one_sentence(
-        "embeddings/two_directions/sentences_simcse.dill",
-        "embeddings/all_directions/leftright_allstraight.dill",
+        "embeddings/two_directions/sentences_simcse",
+        "embeddings/all_directions/leftright_allstraight",
     )

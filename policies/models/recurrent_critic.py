@@ -6,6 +6,7 @@ from torch.nn import functional as F
 
 from policies.models.recurrent_base import BaseRnn
 from utils import helpers as utl
+import torchkit.pytorch_utils as ptu
 
 
 class CriticRnn(BaseRnn):
@@ -38,7 +39,9 @@ class CriticRnn(BaseRnn):
 
         # 4. build q networks
         self.qf1, self.qf2 = self.algo.build_critic(
-            input_size=self.rnn_hidden_size + shortcut_embedding_size,
+            input_size=self.rnn_hidden_size
+            + shortcut_embedding_size
+            + self.task_proxy_embedding_size,
             hidden_sizes=dqn_layers,
             action_dim=self.action_dim,
         )
@@ -108,13 +111,23 @@ class CriticRnn(BaseRnn):
         same_shape = current_actions.shape[0] == observations.shape[0]
         observations = observations if same_shape else observations[:-1]
         hidden_states = hidden_states if same_shape else hidden_states[:-1]
+        tasks = tasks if same_shape else tasks[:-1]
 
+        # 4. Shortcut for the current obs & action
         curr_embed = self._get_shortcut_obs_act_embedding(
             observations, current_actions
         )  # (T(+1 if not same_shape), B, dim)
+
+        # 5. another branch for current task
+        task_embedding = (
+            ptu.empty_tensor_like(rewards)
+            if tasks is None
+            else self.task_proxy_embedder(tasks)
+        )
+
         # 3. joint embeds
         joint_embeds = torch.cat(
-            (hidden_states, curr_embed), dim=-1
+            (hidden_states, curr_embed, task_embedding), dim=-1
         )  # (T(+1 if not same_shape), B, dim)
 
         # 4. q value

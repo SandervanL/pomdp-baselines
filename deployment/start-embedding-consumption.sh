@@ -4,18 +4,15 @@
 seeds=(42)
 
 # Define the list of gammas
-init_levels=(0 1 2 3)
+obs_init_levels=(2 3)
+rnn_init_levels=(0 1 2 3)
 
 working_dir=$(pwd)
 
 for seed in "${seeds[@]}"; do
-  for obs_init in "${init_levels[@]}"; do
-    for rnn_init in "${init_levels[@]}"; do
-      # If (obs_init is 0 and rnn_init is in [0, 1, 3]), or (rnn_init is 0 and obs_init in [1, 2]), continue
-      if [[ ($obs_init -eq 0 && ($rnn_init -eq 0 || $rnn_init -eq 1 || $rnn_init -eq 3)) || ($rnn_init -eq 0 && ($obs_init -eq 1 || $obs_init -eq 2)) ]]; then
-        continue
-      fi
-      sbatch -J "$obs_init-$rnn_init-$seed-embedding" sbatch-embedding-consumption.sh $working_dir $obs_init $rnn_init $seed
+  for obs_init in "${obs_init_levels[@]}"; do
+    for rnn_init in "${rnn_init_levels[@]}"; do
+      sbatch -J "$obs_init-$rnn_init-embedding" sbatch-embedding-consumption.sh $working_dir $obs_init $rnn_init $seed
     done
   done
 done

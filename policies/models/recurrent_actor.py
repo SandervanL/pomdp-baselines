@@ -83,7 +83,7 @@ class ActorRnn(BaseRnn):
             else self.task_proxy_embedder(task)
         )
 
-        # 3. joint embed
+        # 4. joint embed
         joint_embeds = torch.cat(
             (hidden_state, curr_embed, task_embedding), dim=-1
         )  # (1, B, dim)

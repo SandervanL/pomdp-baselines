@@ -30,19 +30,19 @@ def find_csv_and_yaml_pairs(root_dir):
 
 
 groups = {
-    "sentences_word2vec.dill": "Sentences Word2vec",
-    "sentences_simcse.dill": "Sentences SimCSE",
-    "words_word2vec.dill": "Words Word2Vec",
-    "words_simcse.dill": "Words SimCSE",
-    "object_type_word2vec.dill": "Type Word2Vec",
-    "object_type_simcse.dill": "Type SimCSE",
+    "sentences_word2vec": "Sentences Word2vec",
+    "sentences_simcse": "Sentences SimCSE",
+    "words_word2vec": "Words Word2Vec",
+    "words_simcse": "Words SimCSE",
+    "object_type_word2vec": "Type Word2Vec",
+    "object_type_simcse": "Type SimCSE",
 }
 
 groups_info = {
-    "sentences_simcse.dill": "Sentences",
-    "words_simcse.dill": "Words",
-    "object_type_simcse.dill": "Object Type",
-    "perfect.dill": "Perfect",
+    "sentences_simcse": "Sentences",
+    "words_simcse": "Words",
+    "object_type_simcse": "Object Type",
+    "perfect": "Perfect",
 }
 
 
@@ -85,10 +85,7 @@ def init_wandb(yaml_path: str, project: str, is_old: bool, group: str) -> bool:
 
 def insert_wandb(csv_file: str) -> None:
     print(csv_file)
-    try:
-        df = pd.read_csv(csv_file)
-    except ParserError:
-        raise f"Could not read from {csv_file}"
+    df = pd.read_csv(csv_file)
 
     data_list = df.to_dict(orient="records")
     old_data = data_list[0]
@@ -143,10 +140,24 @@ def insert_wandb(csv_file: str) -> None:
     result_table.to_csv(new_filename, index=False)
 
 
+failed_files = []
+
+
+def try_wandb(csv_file: str) -> None:
+    global failed_files
+    try:
+        insert_wandb(csv_file)
+    except Exception as e:
+        print(f"{e} {csv_file}")
+        failed_files.append(csv_file)
+
+
 def main():
     group = "Baseline"
-    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\directions\\directions-log"
-
+    root_directory = (
+        "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\11-11"
+    )
+    # root_directory = "D:\\Afstuderen\\embedding-consumption\\embedding-extra-long"
     project = "Generalization 5"
     is_old = False
 
@@ -155,7 +166,12 @@ def main():
         csv_files = [csv_file for csv_file, _ in csv_yamls]
 
         # Pool map to call insert_wandb
-        pool.map(insert_wandb, csv_files)
+        pool.map(try_wandb, csv_files)
+
+    if len(failed_files) > 0:
+        print("Failed files:")
+        for file in failed_files:
+            print(file)
 
     # for csv_file, yaml_file in find_csv_and_yaml_pairs(root_directory):
     #     print(f"CSV File: {csv_file}")

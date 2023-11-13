@@ -14,15 +14,15 @@ from matplotlib.patches import Rectangle
 
 class GridNavi(gym.Env):
     def __init__(
-            self,
-            num_cells=5,
-            num_steps=15,
-            n_tasks=2,
-            modify_init_state_dist=False,
-            is_sparse=False,
-            return_belief_rewards=False,  # output R+ instead of R
-            seed=None,
-            **kwargs
+        self,
+        num_cells=5,
+        num_steps=15,
+        n_tasks=2,
+        modify_init_state_dist=False,
+        is_sparse=False,
+        return_belief_rewards=False,  # output R+ instead of R
+        seed=None,
+        **kwargs
     ):
         super(GridNavi, self).__init__()
 
@@ -31,7 +31,7 @@ class GridNavi(gym.Env):
 
         self.n_tasks = n_tasks
         self.num_cells = num_cells
-        self.num_states = num_cells ** 2
+        self.num_states = num_cells**2
         self.grid_size = (num_cells, num_cells)
 
         self.is_sparse = is_sparse
@@ -91,7 +91,7 @@ class GridNavi(gym.Env):
         self.reset()
 
     def _reset_belief(self):
-        self._belief_state = np.zeros((self.num_cells ** 2))
+        self._belief_state = np.zeros((self.num_cells**2))
         for pg in self.possible_goals:
             idx = self.task_to_id(np.array(pg))
             self._belief_state[idx] = 1.0 / len(self.possible_goals)
@@ -112,7 +112,6 @@ class GridNavi(gym.Env):
         return np.copy(self._state)
 
     def update_belief(self, state):
-
         if self.is_goal_state():
             self._belief_state *= 0
             self._belief_state[self.task_to_id(self._goal)] = 1
@@ -121,8 +120,9 @@ class GridNavi(gym.Env):
             self._belief_state = np.ceil(self._belief_state)
             self._belief_state /= sum(self._belief_state)
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
-            tuple[np.ndarray, dict]:
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
         self.step_count = 0
         return self.reset_model()
 
@@ -146,7 +146,9 @@ class GridNavi(gym.Env):
         elif action == 4:  # left
             self._state[0] = max([self._state[0] - 1, 0])
 
-    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if isinstance(action, np.ndarray) and action.ndim == 1:
             action = action[0]
         assert self.action_space.contains(action)
@@ -180,8 +182,8 @@ class GridNavi(gym.Env):
         )  # num. goals for which belief isn't 0
         non_goal_rew = 0.0 if self.is_sparse else -0.1
         belief_reward = (
-                                1.0 + non_goal_rew * (num_possible_goal_belief - 1)
-                        ) / num_possible_goal_belief
+            1.0 + non_goal_rew * (num_possible_goal_belief - 1)
+        ) / num_possible_goal_belief
         return belief_reward
 
     def is_goal_state(self):
@@ -192,7 +194,7 @@ class GridNavi(gym.Env):
 
     def task_to_id(self, goals):
         mat = (
-            torch.arange(0, self.num_cells ** 2)
+            torch.arange(0, self.num_cells**2)
             .long()
             .reshape((self.num_cells, self.num_cells))
             .transpose(1, 0)
@@ -217,7 +219,7 @@ class GridNavi(gym.Env):
 
     def id_to_task(self, classes):
         mat = (
-            torch.arange(0, self.num_cells ** 2)
+            torch.arange(0, self.num_cells**2)
             .long()
             .reshape((self.num_cells, self.num_cells))
             .numpy()
@@ -236,9 +238,9 @@ class GridNavi(gym.Env):
         cl = self.task_to_id(pos)
         if cl.dim() == 1:
             cl = cl.view(-1, 1)
-        nb_digits = self.num_cells ** 2
+        nb_digits = self.num_cells**2
         # One hot encoding buffer that you create out of the loop and just keep reusing
-        y_onehot = torch.FloatTensor(pos.shape[0], nb_digits).to(ptu.device)
+        y_onehot = ptu.FloatTensor(pos.shape[0], nb_digits)
         # In your for loop
         y_onehot.zero_()
         y_onehot.scatter_(1, cl, 1)

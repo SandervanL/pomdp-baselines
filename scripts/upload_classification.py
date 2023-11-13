@@ -3,10 +3,10 @@ import pandas as pd
 import wandb
 
 groups = {
-    "embeddings/one_direction/sentences_simcse.dill": "Sentences SimCSE",
-    "embeddings/one_direction/sentences_word2vec.dill": "Sentences Word2Vec",
-    "embeddings/one_direction/words_simcse.dill": "Words SimCSE",
-    "embeddings/one_direction/words_word2vec.dill": "Words Word2Vec",
+    "embeddings/one_direction/sentences_simcse": "Sentences SimCSE",
+    "embeddings/one_direction/sentences_word2vec": "Sentences Word2Vec",
+    "embeddings/one_direction/words_simcse": "Words SimCSE",
+    "embeddings/one_direction/words_word2vec": "Words Word2Vec",
     "embeddings/one_direction/perfect.dill": "Perfect",
 }
 

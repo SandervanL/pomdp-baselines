@@ -3,7 +3,7 @@ cuda: 0 # use_gpu
 env:
   env_type: meta
   env_name: item-meta-maze-partial-v0
-  task_file: /scratch/sajvanleeuwen/embeddings/one_direction/words_simcse.dill
+  task_file: /scratch/sajvanleeuwen/embeddings/one_direction/words_simcse
   max_rollouts_per_task: 1
   task_selection: even # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
                        # "random" make random train/eval split (for sentences)
@@ -54,8 +54,10 @@ policy:
 
   #  "no" returns an empty tensor,
   #  "directly" returns the same tensor,
-  #  "grad" returns a linear layer with relu that can be trained
-  #  "no-grad" returns a linear layer without relu that cannot be trained.
+  #  "grad" returns a trainable linear layer with relu that can be trained
+  #  "grad-relu", "grad-leaky", "grad-swish", "grad-elu" "grad-selu": F.selu, "grad-gelu" "grad-relu6"
+  #  "no-grad" returns a trainable linear layer without activation function.
+
   embedding_grad: "grad" # Whether to train the linear layer that transforms the linear embedding to the rnn hidden state
 
   sacd:

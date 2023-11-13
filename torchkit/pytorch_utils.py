@@ -2,17 +2,16 @@ from typing import Optional
 
 import torch
 import numpy as np
-import os
 import torch.nn.functional as F
-from torch import Tensor, FloatTensor
+from torch import Tensor
 from torch.nn import Module
 
 
-def identity(x):
+def identity(x: Tensor) -> Tensor:
     return x
 
 
-def id_to_onehot(id, n_classes):
+def id_to_onehot(id: Tensor, n_classes: int) -> Tensor:
     """
 
     :param id: arr/tensor of size (n, 1)
@@ -24,7 +23,7 @@ def id_to_onehot(id, n_classes):
     return one_hot
 
 
-def cross_entropy_one_hot(source: Tensor, target: Tensor, reduction="none"):
+def cross_entropy_one_hot(source: Tensor, target: Tensor, reduction="none") -> Tensor:
     _, labels = target.max(dim=-1)  # probabilities are on last dimension
     return F.cross_entropy(source, labels, reduction=reduction)
 
@@ -34,7 +33,7 @@ def soft_update_from_to(source: Module, target: Module, tau: float) -> None:
         target_param.data.copy_(target_param.data * (1.0 - tau) + param.data * tau)
 
 
-def copy_model_params_from_to(source, target):
+def copy_model_params_from_to(source: Tensor, target: Tensor) -> None:
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
 
@@ -56,7 +55,7 @@ def fanin_init(tensor: Tensor) -> Tensor:
     return tensor.data.uniform_(-bound, bound)
 
 
-def fanin_init_weights_like(tensor: Tensor) -> FloatTensor:
+def fanin_init_weights_like(tensor: Tensor) -> Tensor:
     size = tensor.size()
     if len(size) == 2:
         fan_in = size[0]
@@ -119,8 +118,8 @@ def gpu_enabled() -> bool:
 
 
 # noinspection PyPep8Naming
-def FloatTensor(*args, **kwargs) -> FloatTensor:
-    return torch.FloatTensor(*args, **kwargs, device=device)
+def FloatTensor(*args, **kwargs) -> Tensor:
+    return torch.tensor(*args, **kwargs, device=device, dtype=torch.float32)
 
 
 def from_numpy(*args, **kwargs) -> Tensor:

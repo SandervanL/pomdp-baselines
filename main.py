@@ -49,6 +49,7 @@ def define_flags():
     flags.DEFINE_integer("num_cpus", None, "How many cpus to use.")
     flags.DEFINE_float("uncertainty_scale", None, "The scale of the uncertainty.")
     flags.DEFINE_float("split", None, "Train test split.")
+    flags.DEFINE_string("embedding_grad", None, "Activation function for embedding.")
 
     flags.FLAGS(sys.argv)
 
@@ -103,6 +104,8 @@ def load_config() -> dict:
         v["policy"]["embedding_rnn_init"] = FLAGS.embedding_rnn_init
     if FLAGS.uncertainty_scale is not None:
         v["policy"]["uncertainty"]["scale"] = FLAGS.uncertainty_scale
+    if FLAGS.embedding_grad is not None:
+        v["policy"]["embedding_grad"] = FLAGS.embedding_grad
 
     if FLAGS.seed is not None:
         v["seed"] = FLAGS.seed

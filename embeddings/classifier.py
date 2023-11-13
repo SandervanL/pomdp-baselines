@@ -190,10 +190,10 @@ def get_tasks_by_type(
 
 if __name__ == "__main__":
     files = [
-        "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\embeddings/one_direction/sentences_simcse.dill",
-        # "embeddings/one_direction/sentences_word2vec.dill",
-        # "embeddings/one_direction/words_simcse.dill",
-        # "embeddings/one_direction/words_word2vec.dill",
+        "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\embeddings/one_direction/sentences_simcse",
+        # "embeddings/one_direction/sentences_word2vec",
+        # "embeddings/one_direction/words_simcse",
+        # "embeddings/one_direction/words_word2vec",
         # "embeddings/one_direction/perfect.dill",
     ]
     output_csv = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\classifier\\generalization\\large-progress-filled.csv"

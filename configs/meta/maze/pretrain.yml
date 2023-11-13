@@ -3,7 +3,7 @@ cuda: 0 # use_gpu
 env:
   env_type: meta
   env_name: item-meta-maze-partial-v0
-  task_file: /scratch/sajvanleeuwen/embeddings/one_direction/sentences_simcse.dill
+  task_file: /scratch/sajvanleeuwen/embeddings/one_direction/sentences_simcse
   max_rollouts_per_task: 1
   task_selection: random-word # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
                        # "random" make random train/eval split (for sentences)

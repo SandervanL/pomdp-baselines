@@ -2,26 +2,33 @@ import dill
 from torch import Tensor
 
 from envs.meta.maze.MultitaskMaze import MazeTask, anti_direction
+from torchkit import pytorch_utils as ptu
 
 
 def one_direction_file():
     no_blockage = MazeTask(
-        embedding=Tensor([0.0]),
+        embedding=ptu.tensor([0.0]),
         blocked=False,
         task_type=0,
         sentence="no",
         word="no",
+        negation=False,
+        object_type="light",
+        direction="left",
         short_direction=2,
         short_hook_direction=2,
         long_direction=3,
         long_hook_direction=3,
     )
     blockage = MazeTask(
-        embedding=Tensor([1.0]),
+        embedding=ptu.tensor([1.0]),
         blocked=True,
         task_type=1,
         sentence="yes",
         word="yes",
+        negation=False,
+        object_type="heavy",
+        direction="left",
         short_direction=2,
         short_hook_direction=2,
         long_direction=3,
@@ -29,13 +36,14 @@ def one_direction_file():
     )
     tasks = [blockage, no_blockage]
 
-    with open("embeddings/one_direction/perfect.dill", "wb") as file:
+    out_file = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\embeddings\\one_direction\\perfect.dill"
+    with open(out_file, "wb") as file:
         dill.dump(tasks, file)
 
 
 def two_directions_file():
     no_blockage_left = MazeTask(
-        embedding=Tensor([0.0, 0.0]),
+        embedding=ptu.tensor([0.0, 0.0]),
         blocked=False,
         task_type=0,
         sentence="noleft",
@@ -46,7 +54,7 @@ def two_directions_file():
         long_hook_direction=3,
     )
     blockage_left = MazeTask(
-        embedding=Tensor([1.0, 0.0]),
+        embedding=ptu.tensor([1.0, 0.0]),
         blocked=True,
         task_type=1,
         sentence="yesleft",
@@ -57,7 +65,7 @@ def two_directions_file():
         long_hook_direction=3,
     )
     no_blockage_right = MazeTask(
-        embedding=Tensor([0.0, 1.0]),
+        embedding=ptu.tensor([0.0, 1.0]),
         blocked=False,
         task_type=2,
         sentence="noright",
@@ -68,7 +76,7 @@ def two_directions_file():
         long_hook_direction=2,
     )
     blockage_right = MazeTask(
-        embedding=Tensor([1.0, 1.0]),
+        embedding=ptu.tensor([1.0, 1.0]),
         blocked=True,
         task_type=3,
         sentence="yesright",
@@ -87,7 +95,7 @@ def two_directions_file():
 
 def hook_left():
     blocked = MazeTask(
-        embedding=Tensor([1.0]),
+        embedding=ptu.tensor([1.0]),
         blocked=True,
         task_type=0,
         word="blocked",
@@ -99,7 +107,7 @@ def hook_left():
         object_type="light",
     )
     unblocked = MazeTask(
-        embedding=Tensor([0.0]),
+        embedding=ptu.tensor([0.0]),
         blocked=False,
         task_type=1,
         word="unblocked",
@@ -133,7 +141,7 @@ def all_directions():
                         word += 1
                         tasks.append(
                             MazeTask(
-                                embedding=Tensor(
+                                embedding=ptu.tensor(
                                     [
                                         float(long_direction),
                                         float(long_hook_direction),
@@ -157,4 +165,4 @@ def all_directions():
 
 
 if __name__ == "__main__":
-    hook_left()
+    one_direction_file()

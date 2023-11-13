@@ -47,7 +47,7 @@ except ImportError:
         Creates a normal (also called Gaussian) distribution parameterized by
         `mean` and `std`.
         Example::
-            >>> m = Normal(torch.Tensor([0.0]), torch.Tensor([1.0]))
+            >>> m = Normal(torch.tensor([0.0]), torch.tensor([1.0]))
             >>> m.sample()  # normally distributed with mean=0 and stddev=1
              0.1046
             [torch.FloatTensor of size 1]
@@ -67,7 +67,7 @@ except ImportError:
             # cleanly expand float or Tensor or Variable parameters
             def expand(v):
                 if isinstance(v, Number):
-                    return torch.Tensor([v]).expand(n, 1)
+                    return torch.tensor([v]).expand(n, 1)
                 else:
                     return v.expand(n, *v.size())
 
@@ -75,7 +75,7 @@ except ImportError:
 
         def log_prob(self, value):
             # compute the variance
-            var = self.std ** 2
+            var = self.std**2
             log_std = (
                 math.log(self.std) if isinstance(self.std, Number) else self.std.log()
             )
@@ -106,8 +106,9 @@ class TanhNormal(Distribution):
         self.normal = Normal(normal_mean, normal_std)
         self.epsilon = epsilon
 
-    def sample_n(self, n, return_pre_tanh_value: bool = False) -> \
-            Tensor | tuple[Tensor, Tensor]:
+    def sample_n(
+        self, n, return_pre_tanh_value: bool = False
+    ) -> Tensor | tuple[Tensor, Tensor]:
         z = self.normal.sample_n(n)
         if return_pre_tanh_value:
             return torch.tanh(z), z
@@ -126,14 +127,18 @@ class TanhNormal(Distribution):
             1 - value * value + self.epsilon
         )
 
-    def sample(self, return_pretanh_value: bool = False) -> Tensor | tuple[Tensor, Tensor]:
+    def sample(
+        self, return_pretanh_value: bool = False
+    ) -> Tensor | tuple[Tensor, Tensor]:
         z = self.normal.sample()
         if return_pretanh_value:
             return torch.tanh(z), z
         else:
             return torch.tanh(z)
 
-    def rsample(self, return_pretanh_value: bool = False) -> Tensor | tuple[Tensor, Tensor]:
+    def rsample(
+        self, return_pretanh_value: bool = False
+    ) -> Tensor | tuple[Tensor, Tensor]:
         z = self.normal_mean + self.normal_std * Variable(
             Normal(
                 ptu.zeros(self.normal_mean.size()), ptu.ones(self.normal_std.size())
