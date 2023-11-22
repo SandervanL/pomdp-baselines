@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from embeddings.save_tasks import save_tasks
 from envs.meta.maze.MazeTask import MazeTask
 from torchkit import pytorch_utils as ptu
 
@@ -122,10 +123,16 @@ def get_sbert_embedding(sentences: list[str]) -> Tensor:
         Tensor with sentence embeddings (len(sentences), 768)
     """
     global sbert_model
-    from sentence_transformers import SentenceTransformer
 
     if sbert_model is None:
-        sbert_model = SentenceTransformer("all-mpnet-base-v2", device=ptu.device)
+        set_huggingface_cache_dir()
+        from sentence_transformers import SentenceTransformer
+
+        sbert_model = SentenceTransformer(
+            "all-mpnet-base-v2",
+            device=ptu.device,
+            cache_folder="D:\\Afstuderen\\.cache",
+        )
 
     return ptu.from_numpy(sbert_model.encode(sentences))
 
@@ -143,12 +150,18 @@ def get_simcse_embedding(sentences: list[str]) -> Tensor:
         Tensor with sentence embeddings (len(sentences), 1024)
     """
     global simcse_model
-    from simcse import SimCSE
 
     if simcse_model is None:
+        set_huggingface_cache_dir()
+        from simcse import SimCSE
+
         simcse_model = SimCSE("princeton-nlp/sup-simcse-roberta-large")
 
     return simcse_model.encode(sentences)
+
+
+def set_huggingface_cache_dir():
+    os.environ["HF_HOME"] = "D:\\Afstuderen\\.cache"
 
 
 infersent_model = None
@@ -164,10 +177,11 @@ def get_infersent_embedding(sentences: list[str]) -> Tensor:
         Tensor with sentence embeddings (len(sentences), 4096)
     """
     global infersent_model
-    from infersent import InferSent
-    import nltk
 
     if infersent_model is None:
+        from infersent import InferSent
+        import nltk
+
         nltk.download("punkt")
         infersent_model = InferSent(
             {
@@ -254,9 +268,11 @@ def _get_word2vec_embedding(
         Tensor with the sentence embedding (300,)
     """
     global word2vec_model
-    import gensim.downloader
 
     if word2vec_model is None:
+        os.environ["GENSIM_DATA_DIR"] = "D:\\Afstuderen\\gensim-data"
+        import gensim.downloader
+
         word2vec_model = gensim.downloader.load("word2vec-google-news-300")
 
     embeddings = ptu.zeros(positional_encodings.shape)
@@ -381,26 +397,6 @@ def main_multiple_directions(in_file: str):
     save_tasks(left_directions, "left_directions")
 
 
-def save_tasks(tasks: list[MazeTask], file_path: str):
-    """
-    Save the tasks to a file. Stores the embeddings in a separate file.
-    Args:
-        tasks: The tasks to save.
-        file_path: The directory to save the tasks to.
-    """
-    os.makedirs(file_path, exist_ok=True)
-    embeddings = torch.stack([task.embedding for task in tasks])
-    torch.save(embeddings.cpu(), os.path.join(file_path, "embeddings.pt"))
-
-    without_embeddings = [None] * len(tasks)
-    for index, task in enumerate(tasks):
-        without_embeddings[index] = dict.copy(task.__dict__)
-        del without_embeddings[index]["embedding"]
-
-    with open(os.path.join(file_path, "tasks.json"), "w") as file:
-        json.dump(without_embeddings, file, indent=4)
-
-
 def positional_encoding_matrix(n_words: int, n_dimensions: int) -> Tensor:
     """
     Calculates the positional encoding matrix n_words, n_dimensions.
@@ -447,15 +443,18 @@ def main():
     base_folder = (
         "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\embeddings2"
     )
-    input_output = [
-        ["sentences/one_direction.json", os.path.join(base_folder, "one_direction")],
-        ["sentences/two_directions.json", os.path.join(base_folder, "two_directions")],
-        ["sentences/all_directions.json", os.path.join(base_folder, "all_directions")],
+    inputs = [
+        # "one_direction",
+        # "two_directions",
+        # "all_directions",
+        "all_directions_decoupled",
     ]
-    for input_file, output_folder in input_output:
-        for type_name in ["sentences", "words", "object_type"]:
+    for input_name in inputs:
+        input_file = f"sentences/{input_name}.json"
+        output_folder = os.path.join(base_folder, input_name)
+        for type_name in ["sentences"]:
             embedding_models = (
-                ["simcse", "word2vec", "word2vec_pos", "infersent", "sbert"]
+                ["infersent", "sbert"]
                 if type_name in ["sentences", "words"]
                 else ["simcse"]
             )
@@ -463,21 +462,7 @@ def main():
                 create_embeddings(output_folder, input_file, embedding_model, type_name)
 
 
-def save_embeddings(file_path: str):
-    # Iterate through every directory in the path and load every 'embeddings.pt' file
-    for root, dirs, files in os.walk(file_path):
-        for dir in dirs:
-            embedding_path = os.path.join(root, dir, "embeddings.pt")
-            if os.path.exists(embedding_path):
-                embeddings = torch.load(embedding_path)
-                torch.save(embeddings.cpu(), embedding_path)
-                print(f"Loaded {embedding_path} with shape {embeddings.shape}")
-
-
 if __name__ == "__main__":
     # add_directionality("sentences/all_directions.json")
-    save_embeddings(
-        "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\embeddings"
-    )
-    # main()
+    main()
     # main_multiple_directions("sentences_4_directions.json")

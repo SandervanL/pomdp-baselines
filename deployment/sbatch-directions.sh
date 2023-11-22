@@ -36,7 +36,7 @@ echo "project path: ${project_path}"
 echo "Task file $3, Seed $2"
 
 # Call your script
-srun python $project_path/main.py --cfg $project_path/configs/meta/maze/directions.yml --seed $2 --task_file /scratch/sajvanleeuwen/embeddings/all_directions/$3 --render_mode null --num_cpus 48
+srun python $project_path/main.py --cfg $project_path/configs/meta/maze/directions.yml --seed $2 --task_file /scratch/sajvanleeuwen/embeddings/$3/sentences_simcse --render_mode null --num_cpus 48
 
 # the other part of view GPU resource utilization:
 #/usr/bin/nvidia-smi --query-accounted-apps='gpu_utilization,mem_utilization,max_memory_usage,time' --format='csv' | /usr/bin/grep -v -F "$previous"

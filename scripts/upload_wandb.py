@@ -145,6 +145,7 @@ failed_files = []
 
 def try_wandb(csv_file: str) -> None:
     global failed_files
+
     try:
         insert_wandb(csv_file)
     except Exception as e:
@@ -154,10 +155,8 @@ def try_wandb(csv_file: str) -> None:
 
 def main():
     group = "Baseline"
-    root_directory = (
-        "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\11-11"
-    )
-    # root_directory = "D:\\Afstuderen\\embedding-consumption\\embedding-extra-long"
+    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-model\\"
+    # root_directory = "D:\\Afstuderen\\baseline"
     project = "Generalization 5"
     is_old = False
 

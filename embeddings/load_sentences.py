@@ -15,14 +15,14 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
-def generate_direction_prompt(
+def generate_multi_prompt(
     word: str, num_sentences: int, direction: str, negation: bool
 ):
     negation_str = "not" if negation else ""
     return f"Give me {num_sentences} sentences that tell someone: there is {negation_str} a {word[0].lower()} placed {direction}"
 
 
-def generate_prompt(word: str, num_sentences: int):
+def generate_uni_prompt(word: str, num_sentences: int):
     return f"Create {num_sentences} sentences that tell someone else there is a {word} to his/her left"
 
 
@@ -141,11 +141,9 @@ def main_multiple_directions(words_path: str, directions_path: str, out_file: st
                 for direction_index, direction_group in enumerate(directions):
                     for direction in direction_group:
                         for negation in [True, False]:
-                            prompt = generate_direction_prompt(
-                                word, 5, direction, negation
-                            )
+                            prompt = generate_multi_prompt(word, 5, direction, negation)
                             base_task = {
-                                "blocked": blocked == 0,
+                                "blocked": (blocked == 0) ^ negation,
                                 "object_type": object_types[
                                     blocked if not negation else 1 - blocked
                                 ],
@@ -184,7 +182,7 @@ def task_exists(tasks: list[dict], task: dict) -> bool:
 
 
 def filter_sentence(sentence: str) -> str:
-    sentence = re.sub(r"^[0-9. \")(]", "", sentence).strip()
+    sentence = re.sub(r"^[0-9. \")(]*", "", sentence).strip()
     sentence = re.sub(r"[.\"]$", "", sentence).strip()
     return (
         sentence.replace("\u2019", "'")
@@ -195,27 +193,32 @@ def filter_sentence(sentence: str) -> str:
     )
 
 
-def fix_sentences(file_path: str):
-    with open(file_path, "r") as file:
-        sentences: list[dict] = json.load(file)
+def fix_sentences():
+    with open("sentences/all_directions.json", "r") as file:
+        tasks: list[dict] = json.load(file)
 
     with open("directions.json", "r") as file:
         directions: list[list[str]] = json.load(file)
 
-    for sentence in sentences:
-        blocked = 0 if sentence["blocked"] else 1
-        sentence["task_type"] = 4 * blocked + directions_index(
-            directions, sentence["direction"]
-        )
+    result_tasks = []
+    for task in tasks:
+        # task["sentence"] = filter_sentence(task["sentence"])
+        task["short_direction"] = directions_index(directions, task["direction"])
+        task["short_hook_direction"] = task["short_direction"]
+        for long_direction in range(4):
+            new_task = deepcopy(task)
+            if long_direction == task["short_direction"]:
+                continue
+            new_task["long_direction"] = long_direction
+            new_task["long_hook_direction"] = long_direction
+            result_tasks.append(new_task)
 
-    with open(file_path, "w") as file:
-        json.dump(sentences, file)
+    with open("sentences/all_directions_decoupled.json", "w") as file:
+        json.dump(result_tasks, file, indent=4)
 
-
-# if __name__ == "__main__":
-#     fix_sentences("sentences_4_directions.json")
 
 if __name__ == "__main__":
+    # fix_sentences()
     #     # main_one_direction(
     #     #     "embeddings/words.json",
     #     #     "embeddings/all_directions.json",

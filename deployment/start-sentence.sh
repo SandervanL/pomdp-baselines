@@ -11,6 +11,6 @@ working_dir=$(pwd)
 # Echo the list of seeds
 for seed in "${seeds[@]}"; do
   for task_selection in "${task_selections[@]}"; do
-    sbatch -J "$task_selection-$seed" sbatch-sentence.sh $working_dir $seed $task_selection
+    sbatch -J "$task_selection" sbatch-sentence.sh $working_dir $seed $task_selection
   done
 done

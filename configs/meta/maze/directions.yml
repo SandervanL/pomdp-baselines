@@ -15,7 +15,7 @@ env:
 
 train:
   # 1000*100 = 10k steps
-  num_iters: 5000 # number meta-training iterates
+  num_iters: 2500 # number meta-training iterates
   num_init_rollouts_pool: 64 # before training
   num_rollouts_per_iter: 1
 
@@ -28,7 +28,7 @@ train:
 
 eval:
   eval_stochastic: false # also eval stochastic policy
-  log_interval: 200 # num of iters
+  log_interval: 1000 # num of iters
   save_interval: -1
   log_tensorboard: false
   eval_on_train_tasks: false # eval on train tasks

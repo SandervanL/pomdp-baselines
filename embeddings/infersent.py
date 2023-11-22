@@ -14,6 +14,7 @@ import time
 
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 
 from torchkit import pytorch_utils as ptu
 
@@ -240,7 +241,7 @@ class InferSent(nn.Module):
         )
 
         embeddings = []
-        for stidx in range(0, len(sentences), bsize):
+        for stidx in tqdm(range(0, len(sentences), bsize)):
             batch = self.get_batch(sentences[stidx : stidx + bsize])
             if self.is_cuda():
                 batch = batch.cuda()

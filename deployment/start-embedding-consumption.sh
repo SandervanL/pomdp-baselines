@@ -18,10 +18,10 @@ for seed in "${seeds[@]}"; do
 done
 
 #for seed in "${seeds[@]}"; do
-#  sbatch -J "0-0-$seed-embedding" sbatch-embedding-consumption.sh $working_dir 0 0 $seed
-#  sbatch -J "0-1-$seed-embedding" sbatch-embedding-consumption.sh $working_dir 0 1 $seed
-#  sbatch -J "0-3-$seed-embedding" sbatch-embedding-consumption.sh $working_dir 0 3 $seed
-#  sbatch -J "1-0-$seed-embedding" sbatch-embedding-consumption.sh $working_dir 1 0 $seed
-#  sbatch -J "2-0-$seed-embedding" sbatch-embedding-consumption.sh $working_dir 2 0 $seed
+#  sbatch -J "0-0-embedding" sbatch-embedding-consumption.sh $working_dir 0 0 $seed
+#  sbatch -J "0-1-embedding" sbatch-embedding-consumption.sh $working_dir 0 1 $seed
+#  sbatch -J "0-3-embedding" sbatch-embedding-consumption.sh $working_dir 0 3 $seed
+#  sbatch -J "1-0-embedding" sbatch-embedding-consumption.sh $working_dir 1 0 $seed
+#  sbatch -J "2-0-embedding" sbatch-embedding-consumption.sh $working_dir 2 0 $seed
 #done
 

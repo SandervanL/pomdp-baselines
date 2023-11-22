@@ -7,5 +7,5 @@ conda activate rl-11
 
 
 python -m pip install --upgrade pip wheel setuptools
-python -m pip install gymnasium torch torchvision torchaudio matplotlib ruamel.yaml absl-py tensorboardX scikit-learn seaborn psutil dill tensorboard wandb pygame
+python -m pip install gymnasium torch torchvision torchaudio matplotlib ruamel.yaml absl-py tensorboardX scikit-learn seaborn psutil dill tensorboard wandb pygame tqdm
 

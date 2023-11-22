@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 from torch.nn import Module, functional as F
 
-from embeddings.classifier import train_classifier
+from embeddings.analysis.classifier import train_classifier
 from envs.meta.maze.MultitaskMaze import MazeTask
 from policies.rl.base import RLAlgorithmBase
 from utils import helpers as utl, logger
