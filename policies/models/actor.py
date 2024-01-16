@@ -1,12 +1,15 @@
+from typing import Optional
+
 import numpy as np
 import torch
-from torch import nn as nn
+from gymnasium.core import ObsType, ActType
+from torch import nn as nn, Tensor
 import torch.nn.functional as F
 
 from torch.distributions import Categorical
 from torchkit.distributions import TanhNormal
-from torchkit.networks import Mlp
-
+from torchkit.networks import Mlp, ImageEncoder
+import torchkit.pytorch_utils as ptu
 
 LOG_SIG_MAX = 2
 LOG_SIG_MIN = -20
@@ -16,20 +19,20 @@ PROB_MIN = 1e-8
 class MarkovPolicyBase(Mlp):
     def __init__(
         self,
-        obs_dim,
-        action_dim,
-        hidden_sizes,
-        init_w=1e-3,
-        image_encoder=None,
+        obs_dim: int,
+        action_dim: int,
+        hidden_sizes: list[int],
+        init_w: float = 1e-3,
+        image_encoder: Optional[ImageEncoder] = None,  # TODO find type hint
         **kwargs
     ):
         self.save_init_params(locals())
-        self.action_dim = action_dim
+        self.action_dim: int = action_dim
 
         if image_encoder is None:
-            self.input_size = obs_dim
+            self.input_size: int = obs_dim
         else:
-            self.input_size = image_encoder.embed_size
+            self.input_size: int = image_encoder.embed_size
 
         # first register MLP
         super().__init__(
@@ -41,9 +44,9 @@ class MarkovPolicyBase(Mlp):
         )
 
         # then register image encoder
-        self.image_encoder = image_encoder  # None or nn.Module
+        self.image_encoder: ImageEncoder = image_encoder  # None or nn.Module
 
-    def forward(self, obs):
+    def forward(self, obs: ObsType) -> torch.Tensor:
         """
         :param obs: Observation, usually 2D (B, dim), but maybe 3D (T, B, dim)
         return action (*, dim)
@@ -51,7 +54,7 @@ class MarkovPolicyBase(Mlp):
         x = self.preprocess(obs)
         return super().forward(x)
 
-    def preprocess(self, obs):
+    def preprocess(self, obs: ObsType) -> torch.Tensor:
         x = obs
         if self.image_encoder is not None:
             x = self.image_encoder(x)
@@ -68,10 +71,7 @@ class DeterministicPolicy(MarkovPolicyBase):
     NOTE: action space must be [-1,1]^d
     """
 
-    def forward(
-        self,
-        obs,
-    ):
+    def forward(self, obs: ObsType) -> torch.Tensor:
         h = super().forward(obs)
         action = torch.tanh(h)  # map into [-1, 1]
         return action
@@ -96,12 +96,12 @@ class TanhGaussianPolicy(MarkovPolicyBase):
 
     def __init__(
         self,
-        obs_dim,
-        action_dim,
-        hidden_sizes,
-        std=None,
-        init_w=1e-3,
-        image_encoder=None,
+        obs_dim: int,
+        action_dim: int,
+        hidden_sizes: list[int],
+        std: Optional[float] = None,
+        init_w: float = 1e-3,
+        image_encoder: Optional[ImageEncoder] = None,
         **kwargs
     ):
         self.save_init_params(locals())
@@ -125,13 +125,15 @@ class TanhGaussianPolicy(MarkovPolicyBase):
 
     def forward(
         self,
-        obs,
-        reparameterize=True,
-        deterministic=False,
-        return_log_prob=False,
-    ):
+        obs: ObsType,
+        reparameterize: bool = True,
+        deterministic: bool = False,
+        return_log_prob: bool = False,
+        valid_actions: Optional[np.ndarray] = None,
+    ) -> dict[ActType, Tensor, Tensor, Optional[Tensor]]:
         """
         :param obs: Observation, usually 2D (B, dim), but maybe 3D (T, B, dim)
+        :param reparameterize: If True, use the reparameterization trick
         :param deterministic: If True, do not sample
         :param return_log_prob: If True, return a sample and its log probability
         """
@@ -150,27 +152,21 @@ class TanhGaussianPolicy(MarkovPolicyBase):
         log_prob = None
         if deterministic:
             action = torch.tanh(mean)
-            assert (
-                return_log_prob == False
-            )  # NOTE: cannot be used for estimating entropy
+            assert not return_log_prob  # NOTE: cannot be used for estimating entropy
         else:
             tanh_normal = TanhNormal(mean, std)  # (*, B, dim)
             if return_log_prob:
-                if reparameterize:
-                    action, pre_tanh_value = tanh_normal.rsample(
-                        return_pretanh_value=True
-                    )
-                else:
-                    action, pre_tanh_value = tanh_normal.sample(
-                        return_pretanh_value=True
-                    )
+                sample_func = (
+                    tanh_normal.rsample if reparameterize else tanh_normal.sample
+                )
+                action, pre_tanh_value = sample_func(return_pretanh_value=True)
+
                 log_prob = tanh_normal.log_prob(action, pre_tanh_value=pre_tanh_value)
                 log_prob = log_prob.sum(dim=-1, keepdim=True)  # (*, B, 1)
             else:
-                if reparameterize:
-                    action = tanh_normal.rsample()
-                else:
-                    action = tanh_normal.sample()
+                action = (
+                    tanh_normal.rsample() if reparameterize else tanh_normal.sample()
+                )
 
         return action, mean, log_std, log_prob
 
@@ -189,29 +185,34 @@ class CategoricalPolicy(MarkovPolicyBase):
 
     def forward(
         self,
-        obs,
-        deterministic=False,
-        return_log_prob=False,
-    ):
+        obs: ObsType,
+        deterministic: bool = False,
+        return_log_prob: bool = False,
+        valid_actions: Optional[np.ndarray] = None,
+    ) -> tuple[Tensor, Tensor, Optional[Tensor]]:
         """
         :param obs: Observation, usually 2D (B, dim), but maybe 3D (T, B, dim)
         :param deterministic: If True, do not sample
         :param return_log_prob: If True, return a sample and its log probability
+        :param valid_actions: If not None, only consider these actions (one-hot encoded)
         return: action (*, B, A), prob (*, B, A), log_prob (*, B, A)
         """
         action_logits = super().forward(obs)  # (*, A)
-
         prob, log_prob = None, None
+
+        if valid_actions is not None:
+            valid_actions_tensor = ptu.from_numpy(valid_actions)
+            invalid_action_indices = torch.where(valid_actions_tensor == 0)[0]
+            action_logits[:, invalid_action_indices] = -float("inf")
+
         if deterministic:
             action = torch.argmax(action_logits, dim=-1)  # (*)
-            assert (
-                return_log_prob == False
-            )  # NOTE: cannot be used for estimating entropy
+            assert not return_log_prob  # NOTE: cannot be used for estimating entropy
         else:
             prob = F.softmax(action_logits, dim=-1)  # (*, A)
-            distr = Categorical(prob)
+            distribution = Categorical(prob)
             # categorical distr cannot reparameterize
-            action = distr.sample()  # (*)
+            action = distribution.sample()  # (*)
             if return_log_prob:
                 log_prob = torch.log(torch.clamp(prob, min=PROB_MIN))
 

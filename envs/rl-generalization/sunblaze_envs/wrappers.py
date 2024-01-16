@@ -1,7 +1,7 @@
 import collections
+from typing import Any, Optional
 
 import gymnasium as gym
-
 from gymnasium.envs.registration import load
 import numpy as np
 
@@ -19,12 +19,13 @@ def ActionDelayWrapper(delay_range_start, delay_range_end):
             action = self._action_buffer.popleft()
             return self.env.step(action)
 
-        def _reset(self):
+        def _reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+                tuple[np.ndarray, dict]:
             self._action_delay = np.random.randint(delay_range_start, delay_range_end)
             self._action_buffer = collections.deque(
                 [0 for _ in range(self._action_delay)]
             )
-            return self.env.reset()
+            return self.env.reset(seed=seed, options=options)
 
     return ActionDelayWrapper
 

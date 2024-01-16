@@ -1,4 +1,7 @@
+from typing import SupportsFloat, Any
+
 import numpy as np
+from gymnasium.core import ActType, ObsType
 
 from .ant_multitask_base import MultitaskAntEnv
 
@@ -10,19 +13,19 @@ class AntDirEnv(MultitaskAntEnv):
     """
 
     def __init__(
-        self,
-        task={},
-        n_tasks=None,
-        max_episode_steps=200,
-        forward_backward=True,
-        **kwargs
+            self,
+            task={},
+            n_tasks=None,
+            max_episode_steps=200,
+            forward_backward=True,
+            **kwargs
     ):
         self.forward_backward = forward_backward
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
 
         super(AntDirEnv, self).__init__(task, n_tasks, **kwargs)
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         torso_xyz_before = np.array(self.get_body_com("torso"))
 
         direct = (np.cos(self._goal), np.sin(self._goal))
@@ -34,7 +37,7 @@ class AntDirEnv(MultitaskAntEnv):
 
         ctrl_cost = 0.5 * np.square(action).sum()
         contact_cost = (
-            0.5 * 1e-3 * np.sum(np.square(np.clip(self.sim.data.cfrc_ext, -1, 1)))
+                0.5 * 1e-3 * np.sum(np.square(np.clip(self.sim.data.cfrc_ext, -1, 1)))
         )
         survive_reward = 1.0
         reward = forward_reward - ctrl_cost - contact_cost + survive_reward
@@ -46,6 +49,7 @@ class AntDirEnv(MultitaskAntEnv):
             ob,
             reward,
             done,
+            done,  # TODO this is not right
             dict(
                 reward_forward=forward_reward,
                 reward_ctrl=-ctrl_cost,

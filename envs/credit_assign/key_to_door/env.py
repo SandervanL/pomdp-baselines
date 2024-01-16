@@ -20,29 +20,34 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from typing import Optional, Any, SupportsFloat
+
 import numpy as np
+from gymnasium.core import ActType, ObsType
 from pycolab import rendering
 
 # from tvt.pycolab import active_visual_match
 from envs.credit_assign.key_to_door import key_to_door, common
-from tensorflow import nest
+
+
+# from tensorflow import nest
 
 
 class PycolabEnvironment(object):
     """A simple environment adapter for pycolab games."""
 
     def __init__(
-        self,
-        game,
-        num_apples=10,
-        apple_reward=1.0,
-        fix_apple_reward_in_episode=False,
-        final_reward=10.0,
-        respawn_every=20,
-        crop=True,
-        default_reward=0,
-        REWARD_GRID=key_to_door.REWARD_GRID_SR,
-        max_frames=key_to_door.MAX_FRAMES_PER_PHASE_SR,
+            self,
+            game,
+            num_apples=10,
+            apple_reward=1.0,
+            fix_apple_reward_in_episode=False,
+            final_reward=10.0,
+            respawn_every=20,
+            crop=True,
+            default_reward=0,
+            REWARD_GRID=key_to_door.REWARD_GRID_SR,
+            max_frames=key_to_door.MAX_FRAMES_PER_PHASE_SR,
     ):
         """Construct a `environment.Base` adapter that wraps a pycolab game."""
         rng = np.random.RandomState()
@@ -76,19 +81,21 @@ class PycolabEnvironment(object):
         observation, _, _ = episode.its_showtime()
         self._image_shape = self._rgb_converter(observation).shape
 
-    def _process_outputs(self, observation, reward):
+    def _process_outputs(self, observation: ObsType, reward: SupportsFloat) -> tuple[
+        np.ndarray, SupportsFloat]:
         if reward is None:
             reward = self._default_reward
         image = self._rgb_converter(observation)
         return image, reward
 
-    def reset(self):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None) -> \
+            tuple[np.ndarray, dict]:
         """Start a new episode."""
         self._episode = self._game.make_episode()
         observation, reward, _ = self._episode.its_showtime()
         return self._process_outputs(observation, reward)
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Take step in episode."""
         observation, reward, _ = self._episode.play(action)
         return self._process_outputs(observation, reward)

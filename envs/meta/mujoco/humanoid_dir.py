@@ -2,7 +2,10 @@
     Same environment in on-policy varibad, with code refactor
     https://github.com/lmzintgraf/varibad/blob/master/environments/mujoco/humanoid_dir.py
 """
+from typing import SupportsFloat, Any
+
 import numpy as np
+from gymnasium.core import ActType, ObsType
 from gymnasium.envs.mujoco import HumanoidEnv as HumanoidEnv
 from gymnasium import spaces
 
@@ -20,10 +23,10 @@ class HumanoidDirEnv(HumanoidEnv):
         self.n_tasks = n_tasks
         assert n_tasks == None
         self._goal = self._sample_raw_task()["goal"]
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
         super(HumanoidDirEnv, self).__init__()
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         pos_before = np.copy(mass_center(self.model, self.sim)[:2])
 
         self.do_simulation(action, self.frame_skip)
@@ -34,9 +37,9 @@ class HumanoidDirEnv(HumanoidEnv):
         goal_direction = (np.cos(self._goal), np.sin(self._goal))
 
         lin_vel_cost = (
-            0.25
-            * np.sum(goal_direction * (pos_after - pos_before))
-            / self.model.opt.timestep
+                0.25
+                * np.sum(goal_direction * (pos_after - pos_before))
+                / self.model.opt.timestep
         )
         quad_ctrl_cost = 0.1 * np.square(data.ctrl).sum()
         quad_impact_cost = 0.5e-6 * np.square(data.cfrc_ext).sum()
@@ -51,6 +54,7 @@ class HumanoidDirEnv(HumanoidEnv):
             self._get_obs(),
             reward,
             done,
+            done,  # TODO this might not be right
             dict(
                 reward_linvel=lin_vel_cost,
                 reward_quadctrl=-quad_ctrl_cost,

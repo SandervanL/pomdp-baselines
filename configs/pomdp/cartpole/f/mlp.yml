@@ -2,7 +2,7 @@ seed: 73
 cuda: -1 # use_gpu
 env:
   env_type: pomdp
-  env_name: CartPole-F-v0
+  env_name: CartPole-F-v1
 
   num_eval_tasks: 20 # num of eval episodes
 

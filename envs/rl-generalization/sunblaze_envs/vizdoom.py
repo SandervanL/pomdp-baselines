@@ -11,7 +11,7 @@ import vizdoom
 import omg
 
 ASSET_PATH = os.path.join(os.path.dirname(__file__), "assets", "vizdoom")
-
+assert False
 # Texture set A.
 TEXTURES_SET_A = [
     line.strip() for line in open(os.path.join(ASSET_PATH, "texture_set_a.txt"))
@@ -125,8 +125,8 @@ def sample_things(things, modify_things):
 
 class VizDoomEnvironment(gym.Env):
     metadata = {
-        "render.modes": ["rgb_array"],
-        "video.frames_per_second": 35,
+        "render_modes": ["rgb_array"],
+        "render_fps": 35,
     }
     # Scenario definitions. Within each scenario definition, configuration is inherited
     # from the baseline variant to avoid repetition.
@@ -287,7 +287,7 @@ class VizDoomEnvironment(gym.Env):
 
     def _seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
-        self._vizdoom.set_seed(seed % 2 ** 32)
+        self._vizdoom.set_seed(seed % 2**32)
         return [seed]
 
     def _get_observation(self):

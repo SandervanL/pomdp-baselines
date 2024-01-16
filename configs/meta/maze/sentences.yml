@@ -1,0 +1,68 @@
+seed: 73
+cuda: 0 # use_gpu
+env:
+  env_type: meta
+  env_name: item-meta-maze-partial-v0
+  task_file: /scratch/sajvanleeuwen/embeddings/paper/added_weight_sentences
+  max_rollouts_per_task: 1
+  task_selection: "random-within-word" # "even" evaluate on same tasks as train (for embedding, embedding type, and for information type)
+                       # "random" make random train/eval split (for sentences)
+                       # "random-word" make random train/eval split throughout the words (for unknown word evaluation)
+                       # "random-within-word" make random train/eval split within each word (for unknown formulation evaluation)
+  valid_actions: false
+  train_test_split: 0.8
+
+train:
+  # 1000*100 = 10k steps
+  num_iters: 1000 # number meta-training iterates
+  num_init_rollouts_pool: 64 # before training
+  num_rollouts_per_iter: 1
+
+  num_updates_per_iter: 0.05
+  # buffer params
+  buffer_size: 1e6
+  batch_size: 256 # to tune based on sampled_seq_len
+  sampled_seq_len: -1 # -1 is all, or positive integer
+  sample_weight_baseline: 0.0
+
+eval:
+  eval_stochastic: false # also eval stochastic policy
+  log_interval: 200 # num of iters
+  save_interval: -1
+  log_tensorboard: false
+  eval_on_train_tasks: false # eval on train tasks
+
+policy:
+  separate: True
+  seq_model: lstm # [lstm, gru]
+  algo_name: sacd # only support sac-discrete
+
+  action_embedding_size: 8
+  observ_embedding_size: 32
+  reward_embedding_size: 0
+  rnn_hidden_size: 128
+
+  dqn_layers: [ 128, 128 ]
+  policy_layers: [ 128, 128 ]
+  lr: 0.001
+  gamma: 0.93
+  tau: 0.005
+
+  embedding_obs_init: 1  # 0 for not appending task, 1: append to observation, 2: append to state proxy, 3: both
+  embedding_rnn_init: 0 # 0 creates zero embedding for cell & state, 1: hidden state, 2: cell state, 3: both
+
+  #  "no" returns an empty tensor,
+  #  "directly" returns the same tensor,
+  #  "grad" returns a linear layer with relu that can be trained
+  #  "no-grad" returns a linear layer without relu that cannot be trained.
+  embedding_grad: "grad" # Whether to train the linear layer that transforms the linear embedding to the rnn hidden state
+
+  sacd:
+    entropy_alpha: null
+    automatic_entropy_tuning: true
+    target_entropy: 0.7 # the ratio: target_entropy = ratio * log(|A|)
+    alpha_lr: 0.0003
+
+  uncertainty:
+    type: "none"  # Or none or rnd
+    scale: 0.001

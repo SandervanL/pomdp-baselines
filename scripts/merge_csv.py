@@ -71,7 +71,8 @@ for path in file_paths:
     #   simply using df[tag] = str will broadcast
 
     ## parse trial_str to get variant tags
-    trial_str_list = list(filter(None, path.replace(FLAGS.base_path, "").split("/")))
+    trial_str_list = list(filter(None, path.replace(FLAGS.base_path, "").replace("\\", "/")
+                                 .split("/")))
     trial_str = "/".join(trial_str_list)
     print(trial_str)
 

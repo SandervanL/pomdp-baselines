@@ -44,8 +44,8 @@ class MujocoEnv(mujoco_env.MujocoEnv, Serializable):
             self.viewer = None
 
             self.metadata = {
-                "render.modes": ["human", "rgb_array"],
-                "video.frames_per_second": int(np.round(1.0 / self.dt)),
+                "render_modes": ["human", "rgb_array"],
+                "render_fps": int(np.round(1.0 / self.dt)),
             }
 
             self.init_qpos = self.model.data.qpos.ravel().copy()

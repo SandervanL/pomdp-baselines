@@ -143,7 +143,7 @@ class LeftRightMovingInvader(Invader):
         self._direction = 1
         self._initial_x = self.position[0]
 
-    def step(self):
+    def step(self) -> None:
         if self.position[0] - self._initial_x >= self.max_delta_x:
             self._direction = -1
         elif self.position[0] - self._initial_x <= -self.max_delta_x:
@@ -161,7 +161,7 @@ class CrossScreenMovingInvader(Invader):
 
         self._direction = 1
 
-    def step(self):
+    def step(self) -> None:
         if self.position[0] >= self._world._width - self.width:
             self._direction = -1
         elif self.position[0] <= self.width:
@@ -451,7 +451,7 @@ class SpaceInvadersWorld(PhysicalWorld):
         )
         self._batch.add(self.player_ship)
 
-    def step(self):
+    def step(self) -> None:
         """Perform one environment update step."""
         if self._lives <= 0:
             self.reset_world()

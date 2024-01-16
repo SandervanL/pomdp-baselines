@@ -88,7 +88,6 @@ class RoboschoolXMLModifierMixin:
 class ModifiableRoboschoolHalfCheetah(
     RoboschoolHalfCheetah, RoboschoolTrackDistSuccessMixin
 ):
-
     DEFAULT_DENSITY = 1000
     RANDOM_LOWER_DENSITY = 750
     RANDOM_UPPER_DENSITY = 1250
@@ -541,7 +540,6 @@ class RandomNormalWalker2d_MRPO(
 class ModifiableRoboschoolHalfCheetah_MRPO(
     RoboschoolHalfCheetah, RoboschoolTrackDistSuccessMixin
 ):
-
     RANDOM_LOWER_DENSITY = 750
     RANDOM_UPPER_DENSITY = 1250
     EXTREME_LOWER_DENSITY = 1
@@ -645,7 +643,6 @@ class RandomNormalHalfCheetah_MRPO(
 class ModifiableRoboschoolHopper_MRPO(
     RoboschoolHopper, RoboschoolTrackDistSuccessMixin
 ):
-
     RANDOM_LOWER_DENSITY = 750
     RANDOM_UPPER_DENSITY = 1250
     EXTREME_LOWER_DENSITY = 1

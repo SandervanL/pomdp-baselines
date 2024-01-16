@@ -17,3 +17,9 @@ scripts/tmp_configs/
 *.sif
 
 third_party/
+venv/
+.idea/
+*.zip
+.env
+
+wandb/

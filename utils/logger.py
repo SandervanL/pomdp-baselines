@@ -4,9 +4,11 @@ import os.path as osp
 import json
 import time
 import datetime
+from collections.abc import Set
+
 import dateutil.tz
 import tempfile
-from collections import OrderedDict, Set
+from collections import OrderedDict
 
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -63,19 +65,19 @@ def put_in_middle(str1, str2):
 class HumanOutputFormat(KVWriter, SeqWriter):
     def __init__(self, filename_or_file):
         if isinstance(filename_or_file, str):
-            self.file = open(filename_or_file, "wt")
-            self.own_file = True
+            self.file = None
+            self.filename = filename_or_file
         else:
             assert hasattr(filename_or_file, "read"), (
                 "expected file or str, got %s" % filename_or_file
             )
             self.file = filename_or_file
-            self.own_file = False
+            self.filename = None
 
     def writekvs(self, kvs):
         # Create strings for printing
         key2str = {}
-        for (key, val) in sorted(kvs.items()):
+        for key, val in sorted(kvs.items()):
             if isinstance(val, float):
                 valstr = "%-8.3g" % (val,)
             else:
@@ -97,7 +99,7 @@ class HumanOutputFormat(KVWriter, SeqWriter):
         dashes = "-" * (keywidth + valwidth + 7)
         dashes_time = put_in_middle(dashes, timestamp)
         lines = [dashes_time]
-        for (key, val) in sorted(key2str.items()):
+        for key, val in sorted(key2str.items()):
             lines.append(
                 "| %s%s | %s%s |"
                 % (
@@ -108,75 +110,72 @@ class HumanOutputFormat(KVWriter, SeqWriter):
                 )
             )
         lines.append(dashes)
-        self.file.write("\n".join(lines) + "\n")
 
-        # Flush the output to the file
-        self.file.flush()
+        if self.filename is not None:
+            with open(self.filename, "at") as file:
+                file.write("\n".join(lines) + "\n")
+        else:
+            self.file.write("\n".join(lines) + "\n")
+            self.file.flush()
 
     def _truncate(self, s):
         return s[:30] + "..." if len(s) > 33 else s
 
     def writeseq(self, seq):
-        for arg in seq:
-            self.file.write(arg + " ")
-        self.file.write("\n")
-        self.file.flush()
-
-    def close(self):
-        if self.own_file:
-            self.file.close()
+        if self.filename is not None:
+            with open(self.filename, "at") as file:
+                file.write(" ".join(map(str, seq)) + "\n")
+        else:
+            self.file.write(" ".join(map(str, seq)) + "\n")
+            self.file.flush()
 
 
 class JSONOutputFormat(KVWriter):
     def __init__(self, filename):
-        self.file = open(filename, "wt")
+        self.filename = filename
 
     def writekvs(self, kvs):
         for k, v in sorted(kvs.items()):
             if hasattr(v, "dtype"):
                 v = v.tolist()
                 kvs[k] = float(v)
-        self.file.write(json.dumps(kvs) + "\n")
-        self.file.flush()
-
-    def close(self):
-        self.file.close()
+        with open(self.filename, "at") as file:
+            file.write(json.dumps(kvs) + "\n")
 
 
 class CSVOutputFormat(KVWriter):
     def __init__(self, filename):
-        self.file = open(filename, "w+t")
+        self.filename = filename
+
+        # Create the file
+        with open(self.filename, "wt") as file:
+            pass
         self.keys = []
         self.sep = ","
 
     def writekvs(self, kvs):
         # Add our current row to the history
         extra_keys = list(OrderedSet(kvs.keys()) - OrderedSet(self.keys))
-        if extra_keys:
-            self.keys.extend(extra_keys)
-            self.file.seek(0)
-            lines = self.file.readlines()
-            self.file.seek(0)
-            for (i, k) in enumerate(self.keys):
-                if i > 0:
-                    self.file.write(",")
-                self.file.write(k)
-            self.file.write("\n")
-            for line in lines[1:]:
-                self.file.write(line[:-1])
-                self.file.write(self.sep * len(extra_keys))
-                self.file.write("\n")
-        for (i, k) in enumerate(self.keys):
-            if i > 0:
-                self.file.write(",")
-            v = kvs.get(k)
-            if v is not None:
-                self.file.write(str(v))
-        self.file.write("\n")
-        self.file.flush()
+        with open(self.filename, "r+t") as file:
+            if extra_keys:
+                self.keys.extend(extra_keys)
+                file.seek(0)
+                lines = file.readlines()
+                file.seek(0)
+                file.write(",".join(self.keys) + "\n")
+                for line in lines[1:]:
+                    file.write(line[:-1])
+                    file.write(self.sep * len(extra_keys))
+                    file.write("\n")
 
-    def close(self):
-        self.file.close()
+            file.seek(0, os.SEEK_END)
+            for i, k in enumerate(self.keys):
+                if i > 0:
+                    file.write(",")
+                v = kvs.get(k)
+                if v is not None:
+                    file.write(str(v))
+            file.write("\n")
 
 
 class TensorBoardOutputFormat(KVWriter):
@@ -248,7 +247,7 @@ def logkvs(d):
     """
     Log a dictionary of key-value pairs
     """
-    for (k, v) in d.items():
+    for k, v in d.items():
         logkv(k, v)
 
 
@@ -268,7 +267,7 @@ def add_figure(*args):
 
 def dumpkvs():
     """
-    Write all of the diagnostics from the current iteration
+    Write all the diagnostics from the current iteration
 
     level: int. (see logger.py docs) If the global logger level is higher than
                 the level argument here, don't print to stdout.

@@ -3,6 +3,8 @@ General networks for pytorch.
 
 Algorithm-specific networks should go else-where.
 """
+from typing import Optional
+
 import numpy as np
 import torch
 from torch import nn as nn
@@ -22,17 +24,17 @@ ACTIVATIONS = {
 
 class Mlp(PyTorchModule):
     def __init__(
-        self,
-        hidden_sizes,
-        output_size,
-        input_size,
-        init_w=3e-3,
-        hidden_activation=F.relu,
-        output_activation=ptu.identity,
-        hidden_init=ptu.fanin_init,
-        b_init_value=0.1,
-        layer_norm=False,
-        layer_norm_kwargs=None,
+            self,
+            hidden_sizes: list[int],
+            output_size: int,
+            input_size: int,
+            init_w: float = 3e-3,
+            hidden_activation=F.relu,
+            output_activation=ptu.identity,
+            hidden_init=ptu.fanin_init,
+            b_init_value: float = 0.1,
+            layer_norm: bool = False,
+            layer_norm_kwargs: Optional[dict] = None,
     ):
         self.save_init_params(locals())
         super().__init__()
@@ -112,15 +114,15 @@ def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
 
 class ImageEncoder(nn.Module):
     def __init__(
-        self,
-        image_shape,
-        embed_size=100,
-        depths=[8, 16],
-        kernel_size=2,
-        stride=1,
-        activation=relu_name,
-        from_flattened=False,
-        normalize_pixel=False,
+            self,
+            image_shape,
+            embed_size=100,
+            depths=[8, 16],
+            kernel_size=2,
+            stride=1,
+            activation=relu_name,
+            from_flattened=False,
+            normalize_pixel=False,
     ):
         super(ImageEncoder, self).__init__()
         self.shape = image_shape

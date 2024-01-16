@@ -1,10 +1,5 @@
-# Ignore annoying warnings from imported envs
-import warnings
-
+import warnings  # Ignore annoying warnings from imported envs
 warnings.filterwarnings("ignore", ".*Box bound precision lowered by casting")  # gym
-
-import gymnasium as gym
-import numpy as np
 
 from envs.atari.wrappers import *
 from envs.atari.atari_env import Atari
@@ -36,12 +31,16 @@ def create_env(
     return env
 
 
-if __name__ == "__main__":
+def main():
     env = create_env(env_id="Pong")  # Pong
     print(env.observation_space.shape, env.action_space.n)
 
-    obs = env.reset()
-    done = False
-    while not done:
-        obs, rew, done, info = env.step(env.action_space.sample())
-        print(env.step_, obs.max(), obs.min(), rew, done, info)
+    obs, info = env.reset()
+    terminated, truncated = False
+    while not terminated and not truncated:
+        obs, rew, terminated, truncated, info = env.step(env.action_space.sample())
+        print(env.step_, obs.max(), obs.min(), rew, terminated, truncated, info)
+
+
+if __name__ == "__main__":
+    main()

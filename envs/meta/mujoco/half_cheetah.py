@@ -41,7 +41,7 @@ class HalfCheetahEnv(HalfCheetahEnv_):
 
     @staticmethod
     def visualise_behaviour(
-        env, args, policy, iter_idx, encoder=None, image_folder=None, **kwargs
+            env, args, policy, iter_idx, encoder=None, image_folder=None, **kwargs
     ):
 
         # TODO: are we going to use the decoders for anything? Some visualisations?
@@ -74,7 +74,7 @@ class HalfCheetahEnv(HalfCheetahEnv_):
 
         # (re)set environment
         env.reset_task()
-        (obs_raw, obs_normalised) = env.reset()
+        (obs_raw, obs_normalised), info = env.reset()
         obs_raw = obs_raw.float().reshape((1, -1)).to(device)
         obs_normalised = obs_normalised.float().reshape((1, -1)).to(device)
         start_obs_raw = obs_raw.clone()
@@ -121,7 +121,7 @@ class HalfCheetahEnv(HalfCheetahEnv_):
             # keep track of position
             pos[episode_idx].append(unwrapped_env.get_body_com("torso")[0].copy())
 
-            for step_idx in range(1, env._max_episode_steps + 1):
+            for step_idx in range(1, env.spec.max_episode_steps + 1):
 
                 if step_idx == 1:
                     episode_prev_obs[episode_idx].append(start_obs_raw.clone())

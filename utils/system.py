@@ -11,7 +11,7 @@ def reproduce(seed):
     To fix the environment's, please use
         env.seed(seed)
         env.action_space.np_random.seed(seed)
-    We have add these in our training script
+    We have to add these in our training script
     """
     np.random.seed(seed)
     random.seed(seed)
@@ -23,4 +23,4 @@ def reproduce(seed):
 
 def now_str():
     now = datetime.datetime.now(dateutil.tz.tzlocal())
-    return now.strftime("%m-%d:%H-%M:%S.%f")[:-4]
+    return now.strftime("%m-%d_%H-%M_%S_%f")[:-4]

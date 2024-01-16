@@ -15,7 +15,6 @@ import seaborn as sns
 import pandas as pd
 import pylab as pl
 
-
 sns.set(style="darkgrid")
 cols_deep = sns.color_palette("deep", 10)
 cols_dark = sns.color_palette("dark", 10)
@@ -112,7 +111,8 @@ def rollout_policy(env, learner):
         latent_means = []
         latent_logvars = []
 
-    obs = ptu.from_numpy(env.reset())
+    obs_numpy, info = env.reset()
+    obs = ptu.from_numpy(obs_numpy)
     obs = obs.reshape(-1, obs.shape[-1])
     observations.append(obs)
     done_rollout = False
@@ -203,7 +203,7 @@ def get_test_rollout(args, env, policy, encoder=None):
     # --- roll out policy ---
 
     # (re)set environment
-    [obs_raw, obs_normalised] = env.reset()
+    [obs_raw, obs_normalised], info = env.reset()
     obs_raw = obs_raw.reshape((1, -1)).to(ptu.device)
     obs_normalised = obs_normalised.reshape((1, -1)).to(ptu.device)
 
@@ -228,7 +228,7 @@ def get_test_rollout(args, env, policy, encoder=None):
             episode_latent_means[episode_idx].append(curr_latent_mean[0].clone())
             episode_latent_logvars[episode_idx].append(curr_latent_logvar[0].clone())
 
-        for step_idx in range(1, env._max_episode_steps + 1):
+        for step_idx in range(1, env.spec.max_episode_steps + 1):
 
             episode_prev_obs[episode_idx].append(obs_raw.clone())
 
@@ -307,7 +307,7 @@ def get_test_rollout(args, env, policy, encoder=None):
 
 
 def plot_latents(
-    latent_means, latent_logvars, rewards_preds, num_episodes, num_steps_per_episode
+        latent_means, latent_logvars, rewards_preds, num_episodes, num_steps_per_episode
 ):
     """
     Plot mean/variance/pred_rewards over time
@@ -430,9 +430,8 @@ def vis_rew_pred(args, rew_pred_arr, goal, **kwargs):
 
 
 def plot_discretized_belief_halfcircle(
-    belief_rewards, center_points, env, observations
+        belief_rewards, center_points, env, observations
 ):
-
     fig = plt.figure()
     env.plot_behavior(observations, plot_env=True, color=cols_deep[3], linewidth=5)
     res = center_points[1, 0] - center_points[0, 0]
@@ -467,15 +466,15 @@ def plot_rollouts(observations, env):
     :param env:
     :return:
     """
-    episode_len = env.unwrapped._max_episode_steps
+    episode_len = env.unwrapped.spec.max_episode_steps
     assert (
-        (len(observations) - 1) / episode_len
+            (len(observations) - 1) / episode_len
     ).is_integer(), "Error in observations length - env mismatch"
 
     if isinstance(observations, list):
         observations = torch.cat(observations)
     if (
-        observations.shape[-1] > 2
+            observations.shape[-1] > 2
     ):  # when 2 first dimensions are 2D position (PointRobot and AntSemiCircle)
         observations = observations[:, :2]
 
@@ -486,7 +485,7 @@ def plot_rollouts(observations, env):
 
     for episode in range(num_episodes):
         env.plot_behavior(
-            observations[episode * episode_len + 1 : (episode + 1) * episode_len + 1],
+            observations[episode * episode_len + 1: (episode + 1) * episode_len + 1],
             plot_env=plot_env,
             color=cols_dark[episode],
             label="Episode {}".format(episode + 1),
@@ -530,15 +529,15 @@ def visualize_bahavior(observations, env):
     :return:
     """
 
-    episode_len = env.unwrapped._max_episode_steps
+    episode_len = env.unwrapped.spec.max_episode_steps
     assert (
-        (len(observations) - 1) / episode_len
+            (len(observations) - 1) / episode_len
     ).is_integer(), "Error in observations length - env mismatch"
 
     if isinstance(observations, list):
         observations = torch.cat(observations)
     if (
-        observations.shape[-1] > 2
+            observations.shape[-1] > 2
     ):  # when 2 first dimensions are 2D position (PointRobot and AntSemiCircle)
         observations = observations[:, :2]
 
@@ -557,10 +556,10 @@ def visualize_bahavior(observations, env):
                     (
                         observations[:1, :],
                         observations[
-                            episode * episode_len
-                            + 1 : episode * episode_len
-                            + 1
-                            + timestep
+                        episode * episode_len
+                        + 1: episode * episode_len
+                             + 1
+                             + timestep
                         ],
                     )
                 )

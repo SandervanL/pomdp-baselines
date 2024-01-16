@@ -1,4 +1,9 @@
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
+
+from gymnasium.core import ObsType
+from torch import nn, Tensor
+from torch.nn import Module
+
 from policies.models.actor import MarkovPolicyBase
 
 
@@ -11,19 +16,23 @@ class RLAlgorithmBase:
         pass
 
     @staticmethod
-    def build_actor(input_size, action_dim, hidden_sizes) -> MarkovPolicyBase:
+    def build_actor(
+        input_size: int, action_dim: int, hidden_sizes: list[int]
+    ) -> MarkovPolicyBase:
         raise NotImplementedError
 
     @staticmethod
-    def build_critic(input_size, hidden_sizes, **kwargs) -> Tuple[Any, Any]:
+    def build_critic(
+        input_size: int, hidden_sizes: list[int], **kwargs
+    ) -> Tuple[Any, Any]:
         """
         return two critics
         """
         raise NotImplementedError
 
     def select_action(
-        self, actor, observ, deterministic: bool, **kwargs
-    ) -> Tuple[Any, Any, Any, Any]:
+        self, actor: nn.Module, observ: ObsType, deterministic: bool, **kwargs
+    ) -> Tuple[Tensor, Tensor, Tensor, Any]:
         """
         actor: defined by build_actor
         observ: (B, dim), could be history embedding
@@ -32,7 +41,7 @@ class RLAlgorithmBase:
         raise NotImplementedError
 
     @staticmethod
-    def forward_actor(actor, observ) -> Tuple[Any, Any]:
+    def forward_actor(actor: MarkovPolicyBase, observ: Tensor) -> Tuple[Any, Any]:
         """
         actor: defined by build_actor
         observ: (B, dim), could be history embedding
@@ -44,16 +53,17 @@ class RLAlgorithmBase:
         self,
         markov_actor: bool,
         markov_critic: bool,
-        actor,
-        actor_target,
-        critic,
-        critic_target,
-        observs,
-        actions,
-        rewards,
-        dones,
-        gamma,
-        next_observs,
+        actor: Module,
+        actor_target: Module,
+        critic: Module,
+        critic_target: Module,
+        observations: Tensor,
+        actions: Tensor,
+        rewards: Tensor,
+        dones: Tensor,
+        gamma: float,
+        next_observations: Optional[Tensor] = None,  # used in markov_critic
+        tasks: Optional[Tensor] = None,
     ) -> Tuple[Tuple[Any, Any], Any]:
         """
         return (q1_pred, q2_pred), q_target
@@ -64,13 +74,14 @@ class RLAlgorithmBase:
         self,
         markov_actor: bool,
         markov_critic: bool,
-        actor,
-        actor_target,
-        critic,
-        critic_target,
-        observs,
-        actions,
-        rewards,
+        actor: Module,
+        actor_target: Module,
+        critic: Module,
+        critic_target: Module,
+        observations: Tensor,
+        actions: Tensor,
+        rewards: Tensor,
+        tasks: Optional[Tensor] = None,
     ) -> Tuple[Any, Any]:
         """
         return policy_loss, log_probs*

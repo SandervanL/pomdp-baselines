@@ -1,9 +1,12 @@
+from typing import Optional, Any, SupportsFloat
+
 import gymnasium as gym
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import random
 from gymnasium import spaces
+from gymnasium.core import ActType, ObsType
 from gymnasium.utils import seeding
 from torchkit import pytorch_utils as ptu
 from matplotlib.patches import Rectangle
@@ -28,14 +31,14 @@ class GridNavi(gym.Env):
 
         self.n_tasks = n_tasks
         self.num_cells = num_cells
-        self.num_states = num_cells ** 2
+        self.num_states = num_cells**2
         self.grid_size = (num_cells, num_cells)
 
         self.is_sparse = is_sparse
         self.return_belief_rewards = return_belief_rewards
         self.modify_init_state_dist = modify_init_state_dist
 
-        self._max_episode_steps = num_steps
+        self.spec.max_episode_steps = num_steps
         self.step_count = 0
 
         self.observation_space = spaces.Box(
@@ -88,7 +91,7 @@ class GridNavi(gym.Env):
         self.reset()
 
     def _reset_belief(self):
-        self._belief_state = np.zeros((self.num_cells ** 2))
+        self._belief_state = np.zeros((self.num_cells**2))
         for pg in self.possible_goals:
             idx = self.task_to_id(np.array(pg))
             self._belief_state[idx] = 1.0 / len(self.possible_goals)
@@ -109,7 +112,6 @@ class GridNavi(gym.Env):
         return np.copy(self._state)
 
     def update_belief(self, state):
-
         if self.is_goal_state():
             self._belief_state *= 0
             self._belief_state[self.task_to_id(self._goal)] = 1
@@ -118,7 +120,9 @@ class GridNavi(gym.Env):
             self._belief_state = np.ceil(self._belief_state)
             self._belief_state /= sum(self._belief_state)
 
-    def reset(self):
+    def reset(
+        self, *, seed: Optional[int] = None, options: Optional[dict[str, Any]] = None
+    ) -> tuple[np.ndarray, dict]:
         self.step_count = 0
         return self.reset_model()
 
@@ -142,7 +146,9 @@ class GridNavi(gym.Env):
         elif action == 4:  # left
             self._state[0] = max([self._state[0] - 1, 0])
 
-    def step(self, action):
+    def step(
+        self, action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         if isinstance(action, np.ndarray) and action.ndim == 1:
             action = action[0]
         assert self.action_space.contains(action)
@@ -156,7 +162,7 @@ class GridNavi(gym.Env):
 
         # check if maximum step limit is reached
         self.step_count += 1
-        if self.step_count >= self._max_episode_steps:
+        if self.step_count >= self.spec.max_episode_steps:
             done = True
 
         # compute belief rewards reward
@@ -168,7 +174,7 @@ class GridNavi(gym.Env):
         # compute reward
         reward = self.reward(self._state)
 
-        return self.get_obs(), reward, done, info
+        return self.get_obs(), reward, done, done, info  # TODO this might not be right
 
     def _compute_belief_reward(self):
         num_possible_goal_belief = np.sum(
@@ -188,7 +194,7 @@ class GridNavi(gym.Env):
 
     def task_to_id(self, goals):
         mat = (
-            torch.arange(0, self.num_cells ** 2)
+            torch.arange(0, self.num_cells**2)
             .long()
             .reshape((self.num_cells, self.num_cells))
             .transpose(1, 0)
@@ -213,7 +219,7 @@ class GridNavi(gym.Env):
 
     def id_to_task(self, classes):
         mat = (
-            torch.arange(0, self.num_cells ** 2)
+            torch.arange(0, self.num_cells**2)
             .long()
             .reshape((self.num_cells, self.num_cells))
             .numpy()
@@ -232,9 +238,9 @@ class GridNavi(gym.Env):
         cl = self.task_to_id(pos)
         if cl.dim() == 1:
             cl = cl.view(-1, 1)
-        nb_digits = self.num_cells ** 2
+        nb_digits = self.num_cells**2
         # One hot encoding buffer that you create out of the loop and just keep reusing
-        y_onehot = torch.FloatTensor(pos.shape[0], nb_digits).to(ptu.device)
+        y_onehot = ptu.FloatTensor(pos.shape[0], nb_digits)
         # In your for loop
         y_onehot.zero_()
         y_onehot.scatter_(1, cl, 1)

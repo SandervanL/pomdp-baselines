@@ -1,4 +1,7 @@
+from typing import SupportsFloat, Any
+
 import numpy as np
+from gymnasium.core import ActType, ObsType
 
 from .half_cheetah import HalfCheetahEnv
 
@@ -26,10 +29,10 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
         self.tasks = self.sample_tasks(n_tasks)
         self._goal_vel = self.tasks[0].get("velocity", 0.0)
         self._goal = self._goal_vel
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
         super(HalfCheetahVelEnv, self).__init__()
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         xposbefore = self.sim.data.qpos[0]
         self.do_simulation(action, self.frame_skip)
         xposafter = self.sim.data.qpos[0]
@@ -44,7 +47,7 @@ class HalfCheetahVelEnv(HalfCheetahEnv):
         infos = dict(
             reward_forward=forward_reward, reward_ctrl=-ctrl_cost, task=self._task
         )
-        return observation, reward, done, infos
+        return observation, reward, done, done, infos
 
     def set_goal(self, goal):
         self._goal = np.asarray(goal)

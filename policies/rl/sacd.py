@@ -1,11 +1,18 @@
+from typing import Optional, Any
+
 import torch
 import numpy as np
 import torch.nn as nn
+from gymnasium.core import ObsType
+from torch import Tensor
+from torch.nn import Module
 from torch.optim import Adam
 from .base import RLAlgorithmBase
-from policies.models.actor import CategoricalPolicy
-from torchkit.networks import FlattenMlp
+from policies.models.actor import CategoricalPolicy, MarkovPolicyBase
+from torchkit.networks import FlattenMlp, Mlp
 import torchkit.pytorch_utils as ptu
+from ..models.recurrent_actor import ActorRnn
+from ..models.recurrent_critic import CriticRnn
 
 
 class SACD(RLAlgorithmBase):
@@ -15,27 +22,29 @@ class SACD(RLAlgorithmBase):
 
     def __init__(
         self,
-        entropy_alpha=0.1,
-        automatic_entropy_tuning=True,
-        target_entropy=None,
-        alpha_lr=3e-4,
-        action_dim=None,
+        entropy_alpha: float = 0.1,
+        automatic_entropy_tuning: bool = True,
+        target_entropy: Optional[float] = None,
+        alpha_lr: float = 3e-4,
+        action_dim: Optional[int] = None,
     ):
-
-        self.automatic_entropy_tuning = automatic_entropy_tuning
+        super().__init__()
+        self.automatic_entropy_tuning: bool = automatic_entropy_tuning
         if self.automatic_entropy_tuning:
             assert target_entropy is not None
-            self.target_entropy = float(target_entropy) * np.log(action_dim)
-            self.log_alpha_entropy = torch.zeros(
+            self.target_entropy: float = float(target_entropy) * np.log(action_dim)
+            self.log_alpha_entropy: Tensor = torch.zeros(
                 1, requires_grad=True, device=ptu.device
             )
             self.alpha_entropy_optim = Adam([self.log_alpha_entropy], lr=alpha_lr)
-            self.alpha_entropy = self.log_alpha_entropy.exp().detach().item()
+            self.alpha_entropy: float = self.log_alpha_entropy.exp().detach().item()
         else:
-            self.alpha_entropy = entropy_alpha
+            self.alpha_entropy: float = entropy_alpha
 
     @staticmethod
-    def build_actor(input_size, action_dim, hidden_sizes, **kwargs):
+    def build_actor(
+        input_size: int, action_dim: int, hidden_sizes: list[int], **kwargs
+    ) -> MarkovPolicyBase:
         return CategoricalPolicy(
             obs_dim=input_size,
             action_dim=action_dim,
@@ -44,7 +53,12 @@ class SACD(RLAlgorithmBase):
         )
 
     @staticmethod
-    def build_critic(hidden_sizes, input_size=None, obs_dim=None, action_dim=None):
+    def build_critic(
+        hidden_sizes: list[int],
+        input_size: Optional[int] = None,
+        obs_dim: Optional[int] = None,
+        action_dim: Optional[int] = None,
+    ) -> tuple[Mlp, Mlp]:
         assert action_dim is not None
         if obs_dim is not None:
             input_size = obs_dim
@@ -56,12 +70,22 @@ class SACD(RLAlgorithmBase):
         )
         return qf1, qf2
 
-    def select_action(self, actor, observ, deterministic: bool, return_log_prob: bool):
-        action, prob, log_prob = actor(observ, deterministic, return_log_prob)
+    def select_action(
+        self,
+        actor: nn.Module,
+        observ: ObsType,
+        deterministic: bool,
+        return_log_prob: bool,
+        valid_actions: Optional[np.ndarray] = None,
+        **kwargs
+    ) -> tuple[Tensor, Tensor, Tensor, Any]:
+        action, prob, log_prob = actor(
+            observ, deterministic, return_log_prob, valid_actions
+        )
         return action, prob, log_prob, None
 
     @staticmethod
-    def forward_actor(actor, observ):
+    def forward_actor(actor: Module, observ: Tensor) -> tuple[Tensor, Tensor]:
         _, probs, log_probs = actor(observ, return_log_prob=True)
         return probs, log_probs  # (T+1, B, dim), (T+1, B, dim)
 
@@ -69,41 +93,49 @@ class SACD(RLAlgorithmBase):
         self,
         markov_actor: bool,
         markov_critic: bool,
-        actor,
-        actor_target,
-        critic,
-        critic_target,
-        observs,
-        actions,
-        rewards,
-        dones,
-        gamma,
-        next_observs=None,  # used in markov_critic
+        actor: ActorRnn,
+        actor_target: ActorRnn,
+        critic: CriticRnn,
+        critic_target: CriticRnn,
+        observations: Tensor,
+        actions: Tensor,
+        rewards: Tensor,
+        dones: Tensor,
+        gamma: float,
+        next_observations: Optional[Tensor] = None,  # used in markov_critic
+        tasks: Optional[Tensor] = None,
     ):
+        batch_size = actions.shape[1]
         # Q^tar(h(t+1), pi(h(t+1))) + H[pi(h(t+1))]
         with torch.no_grad():
             # first next_actions from current policy,
             if markov_actor:
                 new_probs, new_log_probs = self.forward_actor(
-                    actor, next_observs if markov_critic else observs
+                    actor, next_observations if markov_critic else observations
                 )
             else:
+                _, _, initial_state = actor.get_initial_info(batch_size, tasks)
                 # (T+1, B, dim) including reaction to last obs
                 new_probs, new_log_probs = actor(
                     prev_actions=actions,
                     rewards=rewards,
-                    observs=next_observs if markov_critic else observs,
+                    observations=next_observations if markov_critic else observations,
+                    tasks=tasks,
+                    initial_state=initial_state,
                 )
 
             if markov_critic:  # (B, A)
-                next_q1 = critic_target[0](next_observs)
-                next_q2 = critic_target[1](next_observs)
+                next_q1 = critic_target[0](next_observations)
+                next_q2 = critic_target[1](next_observations)
             else:
+                _, _, initial_state = critic_target.get_initial_info(batch_size, tasks)
                 next_q1, next_q2 = critic_target(
                     prev_actions=actions,
                     rewards=rewards,
-                    observs=observs,
+                    observations=observations,
                     current_actions=new_probs,
+                    tasks=tasks,
+                    initial_state=initial_state,
                 )  # (T+1, B, A)
 
             min_next_q_target = torch.min(next_q1, next_q2)
@@ -121,19 +153,22 @@ class SACD(RLAlgorithmBase):
                 q_target = q_target[1:]  # (T, B, 1)
 
         if markov_critic:
-            q1_pred = critic[0](observs)
-            q2_pred = critic[1](observs)
+            q1_pred = critic[0](observations)
+            q2_pred = critic[1](observations)
             action = actions.long()  # (B, 1)
             q1_pred = q1_pred.gather(dim=-1, index=action)
             q2_pred = q2_pred.gather(dim=-1, index=action)
 
         else:
             # Q(h(t), a(t)) (T, B, 1)
+            _, _, initial_state = critic.get_initial_info(batch_size, tasks)
             q1_pred, q2_pred = critic(
                 prev_actions=actions,
                 rewards=rewards,
-                observs=observs,
+                observations=observations,
                 current_actions=actions[1:],
+                tasks=tasks,
+                initial_state=initial_state,
             )  # (T, B, A)
 
             stored_actions = actions[1:]  # (T, B, A)
@@ -153,30 +188,40 @@ class SACD(RLAlgorithmBase):
         self,
         markov_actor: bool,
         markov_critic: bool,
-        actor,
-        actor_target,
-        critic,
-        critic_target,
-        observs,
-        actions=None,
-        rewards=None,
-    ):
+        actor: ActorRnn,
+        actor_target: ActorRnn,
+        critic: CriticRnn,
+        critic_target: CriticRnn,
+        observations: Tensor,
+        actions: Optional[Tensor] = None,
+        rewards: Optional[Tensor] = None,
+        tasks: Optional[Tensor] = None,
+    ) -> tuple[Tensor, Tensor]:
+        batch_size = actions.shape[1]
         if markov_actor:
-            new_probs, log_probs = self.forward_actor(actor, observs)
+            new_probs, log_probs = self.forward_actor(actor, observations)
         else:
+            _, _, initial_state = actor.get_initial_info(batch_size, tasks)
             new_probs, log_probs = actor(
-                prev_actions=actions, rewards=rewards, observs=observs
+                prev_actions=actions,
+                rewards=rewards,
+                observations=observations,
+                tasks=tasks,
+                initial_state=initial_state,
             )  # (T+1, B, A)
 
         if markov_critic:
-            q1 = critic[0](observs)
-            q2 = critic[1](observs)
+            q1 = critic[0](observations)
+            q2 = critic[1](observations)
         else:
+            _, _, initial_state = critic.get_initial_info(batch_size, tasks)
             q1, q2 = critic(
                 prev_actions=actions,
                 rewards=rewards,
-                observs=observs,
+                observations=observations,
                 current_actions=new_probs,
+                tasks=tasks,
+                initial_state=initial_state,
             )  # (T+1, B, A)
         min_q_new_actions = torch.min(q1, q2)  # (T+1,B,A)
 
@@ -192,7 +237,7 @@ class SACD(RLAlgorithmBase):
 
         return policy_loss, log_probs
 
-    def update_others(self, current_log_probs):
+    def update_others(self, current_log_probs: float) -> dict[str, float]:
         if self.automatic_entropy_tuning:
             alpha_entropy_loss = -self.log_alpha_entropy.exp() * (
                 current_log_probs + self.target_entropy

@@ -1,4 +1,7 @@
+from typing import SupportsFloat, Any
+
 import numpy as np
+from gymnasium.core import ActType, ObsType
 
 from .ant_multitask_base import MultitaskAntEnv
 
@@ -6,9 +9,9 @@ from .ant_multitask_base import MultitaskAntEnv
 class AntGoalEnv(MultitaskAntEnv):
     def __init__(self, task={}, n_tasks=2, max_episode_steps=200, **kwargs):
         super(AntGoalEnv, self).__init__(task, n_tasks, **kwargs)
-        self._max_episode_steps = max_episode_steps
+        self.spec.max_episode_steps = max_episode_steps
 
-    def step(self, action):
+    def step(self, action: ActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         self.do_simulation(action, self.frame_skip)
         xposafter = np.array(self.get_body_com("torso"))
 
@@ -18,7 +21,7 @@ class AntGoalEnv(MultitaskAntEnv):
 
         ctrl_cost = 0.1 * np.square(action).sum()
         contact_cost = (
-            0.5 * 1e-3 * np.sum(np.square(np.clip(self.sim.data.cfrc_ext, -1, 1)))
+                0.5 * 1e-3 * np.sum(np.square(np.clip(self.sim.data.cfrc_ext, -1, 1)))
         )
         survive_reward = 0.0
         reward = goal_reward - ctrl_cost - contact_cost + survive_reward
@@ -29,6 +32,7 @@ class AntGoalEnv(MultitaskAntEnv):
             ob,
             reward,
             done,
+            done,  # TODO this might not be right
             dict(
                 goal_forward=goal_reward,
                 reward_ctrl=-ctrl_cost,

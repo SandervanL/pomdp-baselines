@@ -4,9 +4,9 @@ env = sunblaze_envs.make("SunblazeHalfCheetahRandomNormal-v0")  # (26, 6)
 # env = sunblaze_envs.make('SunblazeHopperRandomNormal-v0') # (15, 3)
 print(env.observation_space, env.action_space)
 print(env.action_space.high, env.action_space.low)  # [-1,1]
-obs = env.reset()
+obs, info = env.reset()
 print(obs)
-print(env._max_episode_steps)
+print(env.spec.max_episode_steps)
 done = False
 step = 0
 while not done:
