@@ -12,3 +12,4 @@ class DeepMindColor:
     box = (0, 102, 102)
     lava = (255, 0, 0)
     water = (0, 0, 255)
+    amber = (253, 217, 103)

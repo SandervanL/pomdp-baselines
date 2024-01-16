@@ -1,4 +1,4 @@
-from typing import Optional, Any, SupportsFloat
+from typing import Optional, Any, SupportsFloat, Union
 
 import gymnasium as gym
 from gymnasium import spaces, Env
@@ -128,7 +128,7 @@ class POMDPMazeWrapper(gym.Wrapper):
         _, info = self.env.reset(seed=seed, options=options)
         return self._get_observation(info["original_state"]), info
 
-    def render(self) -> RenderFrame | list[RenderFrame] | None:
+    def render(self) -> Union[RenderFrame, list[RenderFrame], None]:
         return self.env.render()
 
     def close(self):

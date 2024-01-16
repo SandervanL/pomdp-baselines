@@ -29,7 +29,7 @@ def main() -> None:
     """Main function to execute the log truncation."""
     # Specify the directory path to start the traversal
     # directory_path = "D:\\Afstuderen\\baseline\\"
-    directory_path = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-model\\"
+    directory_path = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\valid-actions\\"
 
     # Specify the number of lines to keep in each log file
     lines_to_keep = 1000

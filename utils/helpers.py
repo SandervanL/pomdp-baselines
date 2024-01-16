@@ -47,8 +47,9 @@ def get_dim(space):
         raise NotImplementedError
 
 
-def env_step(env: gym.Env, action: ActType) -> tuple[
-    Tensor, Tensor, Tensor, Tensor, dict[str, Any]]:
+def env_step(
+    env: gym.Env, action: ActType
+) -> tuple[Tensor, Tensor, Tensor, Tensor, dict[str, Any]]:
     # action: (A)
     # return: all 2D tensor shape (B=1, dim)
     action = ptu.get_numpy(action)
@@ -79,7 +80,7 @@ def unpack_batch(batch: dict[str, Tensor]):
 
 
 def select_action(
-        args, policy, obs, deterministic, task_sample=None, task_mean=None, task_logvar=None
+    args, policy, obs, deterministic, task_sample=None, task_mean=None, task_logvar=None
 ):
     """
     Select action using the policy.
@@ -152,10 +153,10 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
 
 
 def recompute_embeddings(
-        policy_storage,
-        encoder,
-        sample,
-        update_idx,
+    policy_storage,
+    encoder,
+    sample,
+    update_idx,
 ):
     # get the prior
     task_sample = [policy_storage.task_samples[0].detach().clone()]
@@ -175,9 +176,9 @@ def recompute_embeddings(
         h = encoder.reset_hidden(h, reset_task)
 
         ts, tm, tl, h = encoder(
-            policy_storage.actions.float()[i: i + 1],
-            policy_storage.next_obs_raw[i: i + 1],
-            policy_storage.rewards_raw[i: i + 1],
+            policy_storage.actions.float()[i : i + 1],
+            policy_storage.next_obs_raw[i : i + 1],
+            policy_storage.rewards_raw[i : i + 1],
             h,
             sample=sample,
             return_prior=False,
@@ -191,8 +192,8 @@ def recompute_embeddings(
         try:
             assert (torch.cat(policy_storage.task_mu) - torch.cat(task_mean)).sum() == 0
             assert (
-                           torch.cat(policy_storage.task_logvar) - torch.cat(task_logvar)
-                   ).sum() == 0
+                torch.cat(policy_storage.task_logvar) - torch.cat(task_logvar)
+            ).sum() == 0
         except AssertionError:
             warnings.warn("You are not recomputing the embeddings correctly!")
             import pdb
@@ -229,9 +230,9 @@ class FeatureExtractor(nn.Module):
         if self.output_size != 0:
             return self.activation_function(self.fc(inputs))
         else:
-            return ptu.zeros(
-                0,
-            )  # useful for concat
+            dimensions = list(inputs.shape)
+            dimensions[-1] = 0
+            return ptu.zeros(dimensions)  # useful for concat
 
 
 def sample_gaussian(mu, logvar, num=None):

@@ -57,9 +57,9 @@ class MultitaskMaze(Maze):
         obstacle = Object("obstacle", 1, Color.obstacle, True, self._get_places([1, 4]))
         agent = Object("agent", 2, Color.agent, False, self._get_places(2))
         goal = Object("goal", 3, Color.goal, False, self._get_places(3))
-        color = Color.lava if self.blocked else Color.water
-        item = Object("item", 4, color, self.blocked, self._get_places(4))
-        return free, obstacle, agent, goal, item
+        # color = Color.lava if self.blocked else Color.water
+        item = Object("item", 4, Color.amber, self.blocked, self._get_places(4))
+        return free, obstacle, goal, item, agent
 
 
 def load_tasks_file(filename: str) -> list[MazeTask]:

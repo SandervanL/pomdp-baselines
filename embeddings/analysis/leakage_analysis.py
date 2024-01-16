@@ -30,4 +30,4 @@ def main(file: str):
 
 
 if __name__ == "__main__":
-    main("embeddings/one_direction/sentences.json")
+    main("../sentences/all_directions.json")

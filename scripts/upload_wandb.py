@@ -126,9 +126,7 @@ def insert_wandb(csv_file: str) -> None:
         # Calculate the new values
         blocked = data["metrics/total_steps_eval_blocked"]
         unblocked = data["metrics/total_steps_eval_unblocked"]
-        blocked_regret = blocked - (
-            13 if "rnn-0" in csv_file and "obs-0" in csv_file else 10
-        )
+        blocked_regret = blocked - 10
         unblocked_regret = unblocked - 4
         new_data["metrics/regret"] = blocked_regret + unblocked_regret
         new_data["metrics/cumulative_regret_blocked"] += blocked_regret
@@ -155,7 +153,7 @@ def try_wandb(csv_file: str) -> None:
 
 def main():
     group = "Baseline"
-    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\embedding-model\\"
+    root_directory = "C:\\Users\\Sander\\Documents\\Courses\\2022-2023\\Afstuderen\\Logs\\baseline\\baseline-difficult"
     # root_directory = "D:\\Afstuderen\\baseline"
     project = "Generalization 5"
     is_old = False

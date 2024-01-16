@@ -86,7 +86,7 @@ class MultitaskMazeEnv(MazeEnv):
             self.task = self.get_random_task(seed=seed)
         else:
             self.task = task
-        print(task.sentence)
+        # print(task.sentence)
         self.maze = MultitaskMaze(self.task)
         self.blocked = self.maze.blocked
 

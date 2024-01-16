@@ -8,7 +8,7 @@ from mazelab import DeepMindColor as Color
 class Maze(BaseMaze):
     """Maze class to be used in the environment."""
 
-    def __init__(self, maze: np.ndarray | list[list[int]], **kwargs):
+    def __init__(self, maze: Union[np.ndarray, list[list[int]]], **kwargs):
         """Initialize the maze."""
         if isinstance(maze, np.ndarray):
             self.maze = maze
@@ -36,7 +36,7 @@ class Maze(BaseMaze):
         goal = Object("goal", 3, Color.goal, False, self._get_places(3))
         return free, obstacle, agent, goal
 
-    def _get_places(self, nums: int | list[int]) -> np.ndarray:
+    def _get_places(self, nums: Union[int, list[int]]) -> np.ndarray:
         """
         Get the places where the object is located.
         Args:

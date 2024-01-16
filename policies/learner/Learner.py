@@ -7,7 +7,6 @@ from typing import Optional, Union, Any
 
 import numpy as np
 import torch
-import wandb
 
 # import wandb
 from torch import Tensor
@@ -35,7 +34,7 @@ from utils import logger
 
 @dataclass
 class EvaluationResults:
-    returns_per_episode: np.ndarray | dict = field(
+    returns_per_episode: Union[np.ndarray, dict] = field(
         default_factory=lambda: np.ndarray(0)
     )
     success_rate: np.ndarray = field(default_factory=lambda: np.ndarray(0))

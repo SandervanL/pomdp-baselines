@@ -239,7 +239,7 @@ def get_feature_extractor(
         A feature extractor, which is essentially a linear layer.
         Together with the output size of the feature extractor.
     """
-    if not enable or grad == "no":
+    if not enable or grad == "no" or task_embedding_size == 0:
         return ptu.empty_tensor_like, 0
     if grad == "directly":
         return ptu.identity, task_embedding_size

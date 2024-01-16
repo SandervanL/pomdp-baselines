@@ -1,5 +1,5 @@
 """ Maze environment class. """
-from typing import Optional, SupportsFloat, Any
+from typing import Optional, SupportsFloat, Any, Union
 
 import numpy as np
 import pygame
@@ -21,7 +21,7 @@ class MazeEnv(BaseEnv):
     def __init__(
         self,
         maze: list[list[int]],
-        seed: Optional[int | Generator] = None,
+        seed: Union[int, Generator, None] = None,
         render_mode: Optional[str] = None,
     ):
         """
@@ -201,18 +201,20 @@ class MazeEnv(BaseEnv):
             pygame.init()
             pygame.display.init()
             self.window = pygame.display.set_mode(
-                (self.image.shape[1], 2 * self.image.shape[0])
+                (self.image.shape[1], 1 * self.image.shape[0])
             )
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
         pygame.event.pump()
 
-        if self.total_image is None:
-            self.total_image = np.concatenate([self.image, self.image], axis=0)
-        elif self.train_mode:
-            self.total_image[: self.image.shape[0], :, :] = self.image
-        else:
-            self.total_image[self.image.shape[0] :, :, :] = self.image
+        # if self.total_image is None:
+        #     self.total_image = np.concatenate([self.image, self.image], axis=0)
+        # elif self.train_mode:
+        #     self.total_image[: self.image.shape[0], :, :] = self.image
+        # else:
+        #     self.total_image[self.image.shape[0] :, :, :] = self.image
+
+        self.total_image = self.image
 
         surf = pygame.surfarray.make_surface(np.rot90(self.total_image, axes=[1, 0]))
         self.window.blit(surf, (0, 0))
